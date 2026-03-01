@@ -2094,42 +2094,92 @@ const UI_HTML: &str = r##"<!doctype html>
     rods.push(rod);
   }
 
-  // 1st circuit: 4 loops. each loop has: pipe ring + gcn pump + steam generator.
+  // 1st circuit: 4 loops. each loop has: hot leg + steam generator + cold leg + gcn pump.
+  // we draw it as a simplified pipe run (not a torus) to look closer to the reference diagram.
   const loops = [];
-  const pipeMat = new THREE.MeshStandardMaterial({ color: 0x233041, roughness: 0.85, metalness: 0.05, emissive: 0x000000 });
-  const pipeGeo = new THREE.TorusGeometry(0.78, 0.03, 10, 64);
-  const pumpGeo = new THREE.CylinderGeometry(0.065, 0.065, 0.16, 16);
-  const pumpMat = new THREE.MeshStandardMaterial({ color: 0x60a5fa, roughness: 0.35, metalness: 0.15, emissive: 0x000000 });
-  const sgGeo = new THREE.CylinderGeometry(0.09, 0.09, 0.34, 16);
-  const sgMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.55, metalness: 0.05, emissive: 0x000000 });
+
+  const hotMat = new THREE.MeshStandardMaterial({ color: 0x7dd3fc, roughness: 0.85, metalness: 0.05, emissive: 0x000000 });
+  const coldMat = new THREE.MeshStandardMaterial({ color: 0x60a5fa, roughness: 0.85, metalness: 0.05, emissive: 0x000000 });
+
+  const pipeR = 0.028;
+  const pumpGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.16, 16);
+  const pumpMat = new THREE.MeshStandardMaterial({ color: 0x9fb1c1, roughness: 0.35, metalness: 0.25, emissive: 0x000000 });
+
+  // sg: horizontal heat exchanger
+  const sgGeo = new THREE.CylinderGeometry(0.07, 0.07, 0.34, 18);
+  const sgMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.55, metalness: 0.08, emissive: 0x000000 });
+
+  // particles that show flow direction
+  const dotGeo = new THREE.SphereGeometry(0.012, 10, 10);
+
+  function makeTube(curve, mat){
+    const geo = new THREE.TubeGeometry(curve, 80, pipeR, 10, false);
+    return new THREE.Mesh(geo, mat);
+  }
 
   for (let i=0;i<4;i++){
     const g = new THREE.Group();
     g.rotation.y = (i/4) * Math.PI*2;
 
-    const pipe = new THREE.Mesh(pipeGeo, pipeMat);
-    pipe.rotation.x = Math.PI/2;
-    pipe.position.y = -0.05;
-    g.add(pipe);
+    // anchor points in local loop space
+    const coreTop = new THREE.Vector3(0.0, 0.48, 0.0);
+    const coreBot = new THREE.Vector3(0.0, -0.22, 0.0);
+
+    const sgPos = new THREE.Vector3(-0.95, 0.12, 0.0);
+    const pumpPos = new THREE.Vector3(0.80, -0.22, 0.0);
+
+    // hot leg: coreTop -> sgPos
+    const hotPts = [
+      coreTop,
+      new THREE.Vector3(-0.25, 0.55, 0.0),
+      new THREE.Vector3(-0.70, 0.40, 0.0),
+      new THREE.Vector3(sgPos.x + 0.20, sgPos.y + 0.10, 0.0),
+      new THREE.Vector3(sgPos.x + 0.05, sgPos.y + 0.08, 0.0),
+    ];
+    const hotCurve = new THREE.CatmullRomCurve3(hotPts);
+    const hotTube = makeTube(hotCurve, hotMat.clone());
+    g.add(hotTube);
+
+    // cold leg: sgPos -> pumpPos -> coreBot
+    const coldPts = [
+      new THREE.Vector3(sgPos.x + 0.05, sgPos.y - 0.08, 0.0),
+      new THREE.Vector3(-0.65, -0.10, 0.0),
+      new THREE.Vector3(-0.20, -0.25, 0.0),
+      pumpPos,
+      new THREE.Vector3(0.35, -0.25, 0.0),
+      coreBot,
+    ];
+    const coldCurve = new THREE.CatmullRomCurve3(coldPts);
+    const coldTube = makeTube(coldCurve, coldMat.clone());
+    g.add(coldTube);
 
     const pump = new THREE.Mesh(pumpGeo, pumpMat.clone());
-    pump.position.set(0.78, -0.05, 0);
+    pump.position.copy(pumpPos);
     pump.rotation.z = Math.PI/2;
     g.add(pump);
 
     const sg = new THREE.Mesh(sgGeo, sgMat.clone());
-    sg.position.set(-0.78, 0.02, 0);
+    sg.position.copy(sgPos);
+    sg.rotation.z = Math.PI/2;
     g.add(sg);
 
-    // steam sprite above sg
     const steam = makeLabel('steam');
     steam.scale.set(1.0, 0.25, 1);
     steam.material.opacity = 0.0;
-    steam.position.set(-0.78, 0.55, 0);
+    steam.position.set(sgPos.x, sgPos.y + 0.52, 0.0);
     g.add(steam);
 
+    // flow dots on both legs (showing direction)
+    const dots = [];
+    for (let k=0;k<12;k++){
+      const m = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.4, metalness: 0.0, emissive: 0x000000 });
+      const d = new THREE.Mesh(dotGeo, m);
+      g.add(d);
+      dots.push({ mesh: d, t: (k/12) });
+    }
+
     scene.add(g);
-    loops.push({ group: g, pipe, pump, sg, steam, pumpSpin: 0 });
+    loops.push({ group: g, hotCurve, coldCurve, hotTube, coldTube, pump, sg, steam, dots });
   }
 
   let impactShakeUntil = 0;
@@ -2228,32 +2278,49 @@ const UI_HTML: &str = r##"<!doctype html>
       rod.position.y = 0.55 - ins * 0.55;
     }
 
-    // loops: pump/sg/pipe indication from sn + flow/steam
+    // loops: gcn + sg + flow direction dots.
     // section mapping: sn_a -> loops 0-1, sn_b -> loop 2, sn_c -> loop 3
     const loopOn = [sn[0], sn[0], sn[1], sn[2]];
     const flowN = Math.max(0, Math.min(1, flow / 15000));
     const steamN = Math.max(0, Math.min(1, steamFlow / 2000));
+
     for (let i=0;i<loops.length;i++){
       const on = loopOn[i];
       const L = loops[i];
 
-      // pipe temp hint (based on alarms)
       const hot = alarmsStr.includes('temp_high');
-      L.pipe.material.emissive.setHex(hot ? 0x3b0b0b : 0x000000);
-      L.pipe.material.color.setHex(on ? 0x233041 : 0x141b24);
+      L.hotTube.material.emissive.setHex(hot ? 0x3b0b0b : 0x000000);
+      L.coldTube.material.emissive.setHex(hot ? 0x220b0b : 0x000000);
 
-      L.pump.material.color.setHex(on ? 0x60a5fa : 0x1f2937);
+      // on/off tint
+      L.hotTube.material.opacity = 1.0;
+      L.coldTube.material.opacity = 1.0;
+      L.hotTube.material.transparent = false;
+      L.coldTube.material.transparent = false;
+      L.hotTube.material.color.setHex(on ? 0x7dd3fc : 0x141b24);
+      L.coldTube.material.color.setHex(on ? 0x60a5fa : 0x141b24);
+
+      L.pump.material.color.setHex(on ? 0x9fb1c1 : 0x1f2937);
       L.pump.material.emissive.setHex(on ? 0x000000 : 0x220000);
 
       L.sg.material.color.setHex(on ? 0xfbbf24 : 0x4b5563);
       L.sg.material.emissive.setHex(on ? 0x1a1200 : 0x000000);
 
-      const spin = (on ? (0.6 + flowN*5.0) : 0.1);
+      const spin = (on ? (0.6 + flowN*5.0) : 0.08);
       L.pump.rotation.x += dt * spin;
 
       // steam visibility
       L.steam.material.opacity = on ? (0.05 + steamN * 0.65) : 0.0;
-      L.steam.position.y = 0.55 + 0.05*Math.sin(clock.elapsedTime*2 + i);
+      L.steam.position.y = 0.64 + 0.04*Math.sin(clock.elapsedTime*2 + i);
+
+      // dots: advance along a virtual full-loop param (0..1)
+      for (const d of L.dots) {
+        d.t = (d.t + dt * (on ? (0.10 + flowN*0.80) : 0.02)) % 1.0;
+        const tt = d.t;
+        const p = tt < 0.5 ? L.hotCurve.getPointAt(tt*2) : L.coldCurve.getPointAt((tt-0.5)*2);
+        d.mesh.position.copy(p);
+        d.mesh.material.emissive.setHex(on ? 0x000000 : 0x220000);
+      }
     }
 
     const t = clock.elapsedTime;
