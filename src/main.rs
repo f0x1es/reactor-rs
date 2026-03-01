@@ -2008,8 +2008,34 @@ const UI_HTML: &str = r##"<!doctype html>
   scene.fog = new THREE.Fog(0x080c12, 3, 18);
 
   const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
-  camera.position.set(3.2, 2.8, 3.2);
-  camera.lookAt(0, 0.2, 0);
+
+  // simple orbit controls (no extra deps). drag to rotate, wheel/pinch to zoom.
+  const orbit = {
+    target: new THREE.Vector3(0, 0.2, 0),
+    radius: 4.9,
+    theta: Math.PI * 0.75,
+    phi: Math.PI * 0.33,
+    dragging: false,
+    lastX: 0,
+    lastY: 0,
+  };
+
+  function clamp(v, lo, hi){ return Math.max(lo, Math.min(hi, v)); }
+
+  function updateCamera(){
+    const sp = Math.sin(orbit.phi);
+    const cp = Math.cos(orbit.phi);
+    const st = Math.sin(orbit.theta);
+    const ct = Math.cos(orbit.theta);
+    camera.position.set(
+      orbit.target.x + orbit.radius * sp * ct,
+      orbit.target.y + orbit.radius * cp,
+      orbit.target.z + orbit.radius * sp * st,
+    );
+    camera.lookAt(orbit.target);
+  }
+
+  updateCamera();
 
   let renderer = null;
   try {
@@ -2020,6 +2046,39 @@ const UI_HTML: &str = r##"<!doctype html>
     renderer.shadowMap.enabled = true;
     renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     host.appendChild(renderer.domElement);
+
+    // mouse/touch orbit
+    const canvas = renderer.domElement;
+    canvas.style.touchAction = 'none';
+
+    canvas.addEventListener('pointerdown', (ev) => {
+      orbit.dragging = true;
+      orbit.lastX = ev.clientX;
+      orbit.lastY = ev.clientY;
+      try { canvas.setPointerCapture(ev.pointerId); } catch(e) {}
+    });
+    canvas.addEventListener('pointerup', (ev) => {
+      orbit.dragging = false;
+      try { canvas.releasePointerCapture(ev.pointerId); } catch(e) {}
+    });
+    canvas.addEventListener('pointercancel', () => { orbit.dragging = false; });
+    canvas.addEventListener('pointerleave', () => { orbit.dragging = false; });
+    canvas.addEventListener('pointermove', (ev) => {
+      if (!orbit.dragging) return;
+      const dx = ev.clientX - orbit.lastX;
+      const dy = ev.clientY - orbit.lastY;
+      orbit.lastX = ev.clientX;
+      orbit.lastY = ev.clientY;
+      orbit.theta -= dx * 0.007;
+      orbit.phi = clamp(orbit.phi + dy * 0.007, 0.12, Math.PI - 0.12);
+      updateCamera();
+    });
+
+    canvas.addEventListener('wheel', (ev) => {
+      ev.preventDefault();
+      orbit.radius = clamp(orbit.radius * (1 + ev.deltaY * 0.0012), 2.2, 10.0);
+      updateCamera();
+    }, { passive: false });
   } catch (e) {
     const c = document.createElement('canvas');
     c.width = Math.max(1, host.clientWidth || 1);
