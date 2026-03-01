@@ -1880,7 +1880,7 @@ const UI_HTML: &str = r##"<!doctype html>
       <div class="panel">
         <div class="hd">
           <div class="t">3d</div>
-          <div class="pill">voronezh + caravans</div>
+          <div class="pill">VVER-1000 primary circuit</div>
         </div>
         <div class="bd" style="display:grid; grid-template-rows: 1fr 160px; gap: 10px;">
           <div id="three"></div>
@@ -2005,184 +2005,407 @@ const UI_HTML: &str = r##"<!doctype html>
   if (!host) return;
 
   const scene = new THREE.Scene();
-  scene.fog = new THREE.Fog(0x060a0e, 2, 10);
+  scene.fog = new THREE.Fog(0x080c12, 3, 18);
 
-  const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 100);
-  camera.position.set(0.0, 1.15, 2.35);
-  camera.lookAt(0, 0.1, 0);
+  const camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
+  camera.position.set(3.2, 2.8, 3.2);
+  camera.lookAt(0, 0.2, 0);
 
   let renderer = null;
   try {
     renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(2, window.devicePixelRatio || 1));
+    renderer.toneMapping = THREE.ACESFilmicToneMapping;
+    renderer.toneMappingExposure = 1.1;
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     host.appendChild(renderer.domElement);
   } catch (e) {
     const c = document.createElement('canvas');
     c.width = Math.max(1, host.clientWidth || 1);
     c.height = Math.max(1, host.clientHeight || 1);
-    c.style.width = '100%';
-    c.style.height = '100%';
+    c.style.width = '100%'; c.style.height = '100%';
     host.appendChild(c);
     const ctx = c.getContext('2d');
-    ctx.fillStyle = 'rgba(6,10,14,.35)';
-    ctx.fillRect(0,0,c.width,c.height);
-    ctx.fillStyle = '#9fb1c1';
-    ctx.font = '14px ui-monospace, monospace';
+    ctx.fillStyle = 'rgba(6,10,14,.35)'; ctx.fillRect(0,0,c.width,c.height);
+    ctx.fillStyle = '#9fb1c1'; ctx.font = '14px ui-monospace, monospace';
     ctx.fillText('webgl off: 3d disabled', 14, 24);
     return;
   }
 
-  const ambient = new THREE.AmbientLight(0x99b3ff, 0.55);
+  // --- lighting ---
+  const ambient = new THREE.AmbientLight(0x8899bb, 0.50);
   scene.add(ambient);
-  const key = new THREE.DirectionalLight(0xffffff, 0.85);
-  key.position.set(3, 4, 2);
+  const key = new THREE.DirectionalLight(0xffeedd, 0.9);
+  key.position.set(4, 6, 3);
+  key.castShadow = true;
+  key.shadow.mapSize.set(1024, 1024);
+  key.shadow.camera.near = 0.5; key.shadow.camera.far = 20;
+  key.shadow.camera.left = -5; key.shadow.camera.right = 5;
+  key.shadow.camera.top = 5; key.shadow.camera.bottom = -5;
   scene.add(key);
+  const fill = new THREE.DirectionalLight(0x6688cc, 0.35);
+  fill.position.set(-3, 2, -2);
+  scene.add(fill);
+  const rim = new THREE.DirectionalLight(0x88aaff, 0.25);
+  rim.position.set(-1, 1, 4);
+  scene.add(rim);
 
-  const baseGeo = new THREE.PlaneGeometry(6, 6);
-  const baseMat = new THREE.MeshStandardMaterial({ color: 0x0b0f14, roughness: 1, metalness: 0 });
+  // --- ground platform ---
+  const baseGeo = new THREE.CylinderGeometry(3.5, 3.5, 0.06, 64);
+  const baseMat = new THREE.MeshStandardMaterial({ color: 0x1a1f28, roughness: 0.9, metalness: 0.1 });
   const base = new THREE.Mesh(baseGeo, baseMat);
-  base.rotation.x = -Math.PI/2;
-  base.position.y = -0.65;
+  base.position.y = -0.83;
+  base.receiveShadow = true;
   scene.add(base);
 
-  const cubeGeo = new THREE.BoxGeometry(0.9, 1.2, 0.9);
-  const cubeMat = new THREE.MeshStandardMaterial({ color: 0x2dd4bf, roughness: 0.25, metalness: 0.05, emissive: 0x000000 });
-  const cube = new THREE.Mesh(cubeGeo, cubeMat);
-  scene.add(cube);
+  // grid lines on platform
+  const gridMat = new THREE.MeshStandardMaterial({ color: 0x252d3a, roughness: 0.95, metalness: 0 });
+  for (let i = -6; i <= 6; i++) {
+    const g1 = new THREE.Mesh(new THREE.BoxGeometry(7, 0.005, 0.008), gridMat);
+    g1.position.set(0, -0.795, i * 0.5);
+    scene.add(g1);
+    const g2 = new THREE.Mesh(new THREE.BoxGeometry(0.008, 0.005, 7), gridMat);
+    g2.position.set(i * 0.5, -0.795, 0);
+    scene.add(g2);
+  }
 
-  function makeLabel(text){
+  // === REACTOR VESSEL (корпус реактора) ===
+  // main cylindrical body
+  const vesselR = 0.32, vesselH = 1.6;
+  const vesselGeo = new THREE.CylinderGeometry(vesselR, vesselR, vesselH, 32);
+  const vesselMat = new THREE.MeshStandardMaterial({ color: 0xc8d4e0, roughness: 0.30, metalness: 0.55, emissive: 0x0a0c10 });
+  const vessel = new THREE.Mesh(vesselGeo, vesselMat);
+  vessel.position.y = 0.0;
+  vessel.castShadow = true;
+  scene.add(vessel);
+
+  // hemispherical dome top
+  const domeGeo = new THREE.SphereGeometry(vesselR, 32, 16, 0, Math.PI*2, 0, Math.PI/2);
+  const domeMat = new THREE.MeshStandardMaterial({ color: 0xd0dce8, roughness: 0.25, metalness: 0.6, emissive: 0x080a0e });
+  const dome = new THREE.Mesh(domeGeo, domeMat);
+  dome.position.y = vesselH/2;
+  dome.castShadow = true;
+  scene.add(dome);
+
+  // hemispherical bottom
+  const botGeo = new THREE.SphereGeometry(vesselR * 0.95, 32, 16, 0, Math.PI*2, Math.PI/2, Math.PI/2);
+  const bot = new THREE.Mesh(botGeo, domeMat.clone());
+  bot.position.y = -vesselH/2;
+  scene.add(bot);
+
+  // vessel flanges (rings)
+  const flangeGeo = new THREE.TorusGeometry(vesselR + 0.04, 0.025, 12, 32);
+  const flangeMat = new THREE.MeshStandardMaterial({ color: 0x8899aa, roughness: 0.4, metalness: 0.7 });
+  for (const fy of [vesselH/2 - 0.02, 0.0, -vesselH/2 + 0.02]) {
+    const f = new THREE.Mesh(flangeGeo, flangeMat);
+    f.position.y = fy;
+    f.rotation.x = Math.PI/2;
+    scene.add(f);
+  }
+
+  // core glow (point light inside vessel, driven by power)
+  const coreGlow = new THREE.PointLight(0x2dd4bf, 0, 2.5);
+  coreGlow.position.set(0, 0, 0);
+  scene.add(coreGlow);
+  // secondary warm glow
+  const coreGlow2 = new THREE.PointLight(0xff6644, 0, 1.8);
+  coreGlow2.position.set(0, -0.2, 0);
+  scene.add(coreGlow2);
+
+  // nozzle ring at pipe attachment height
+  const nozzleH = 0.18;
+  const nozzleGeo = new THREE.TorusGeometry(vesselR + 0.02, 0.018, 10, 32);
+  const nozzle1 = new THREE.Mesh(nozzleGeo, flangeMat);
+  nozzle1.position.y = nozzleH;
+  nozzle1.rotation.x = Math.PI/2;
+  scene.add(nozzle1);
+
+  // === CONTROL ROD DRIVE MECHANISMS (приводы СУЗ) ===
+  const rods = [];
+  const crdmGroup = new THREE.Group();
+  // drive housings on top of dome
+  const housingGeo = new THREE.CylinderGeometry(0.022, 0.022, 0.45, 10);
+  const housingMat = new THREE.MeshStandardMaterial({ color: 0x95a5b5, roughness: 0.4, metalness: 0.5 });
+  const rodGeo = new THREE.CylinderGeometry(0.008, 0.008, 0.6, 8);
+  const rodMat = new THREE.MeshStandardMaterial({ color: 0x606870, roughness: 0.5, metalness: 0.3 });
+  for (let i = 0; i < 16; i++) {
+    const a = (i/16) * Math.PI*2;
+    const rr = (i % 2 === 0) ? 0.14 : 0.22;
+    const hx = Math.cos(a) * rr, hz = Math.sin(a) * rr;
+    // housing tube
+    const h = new THREE.Mesh(housingGeo, housingMat);
+    h.position.set(hx, vesselH/2 + 0.32 + 0.22, hz);
+    h.castShadow = true;
+    crdmGroup.add(h);
+    // actual rod (extends down into vessel)
+    const rod = new THREE.Mesh(rodGeo, rodMat);
+    rod.position.set(hx, vesselH/2 + 0.1, hz);
+    crdmGroup.add(rod);
+    rods.push({ mesh: rod, baseY: vesselH/2 + 0.1, hx, hz });
+  }
+  // top plate connecting CRDMs
+  const topPlateGeo = new THREE.CylinderGeometry(0.28, 0.30, 0.04, 32);
+  const topPlate = new THREE.Mesh(topPlateGeo, flangeMat);
+  topPlate.position.y = vesselH/2 + 0.10;
+  crdmGroup.add(topPlate);
+  scene.add(crdmGroup);
+
+  // === LABEL ===
+  function makeLabel(text, fontSize){
     const c = document.createElement('canvas');
     c.width = 512; c.height = 128;
     const ctx = c.getContext('2d');
-    ctx.font = '700 64px ui-monospace, monospace';
+    ctx.font = '700 ' + (fontSize || 56) + 'px ui-monospace, monospace';
     ctx.fillStyle = '#e6edf3';
-    ctx.shadowColor = 'rgba(96,165,250,.8)';
-    ctx.shadowBlur = 18;
+    ctx.shadowColor = 'rgba(96,165,250,.7)';
+    ctx.shadowBlur = 16;
     const m = ctx.measureText(text);
-    ctx.fillText(text, Math.max(24, (c.width - m.width) / 2), 86);
+    ctx.fillText(text, Math.max(16, (c.width - m.width) / 2), 82);
     const tex = new THREE.CanvasTexture(c);
     const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
     const spr = new THREE.Sprite(mat);
-    spr.scale.set(1.8, 0.45, 1);
+    spr.scale.set(1.6, 0.4, 1);
     return spr;
   }
 
-  const label = makeLabel('voronezh');
-  label.position.set(0, 0.95, 0);
+  const label = makeLabel('VVER-1000');
+  label.position.set(0, vesselH/2 + 0.85, 0);
   scene.add(label);
 
+  // === CONTAINMENT SHELL (гермооболочка) — semi-transparent dome ===
+  const contGeo = new THREE.SphereGeometry(2.8, 48, 32, 0, Math.PI*2, 0, Math.PI/2);
+  const contMat = new THREE.MeshStandardMaterial({
+    color: 0x4466aa, roughness: 0.6, metalness: 0.1,
+    transparent: true, opacity: 0.06, side: THREE.DoubleSide
+  });
+  const containment = new THREE.Mesh(contGeo, contMat);
+  containment.position.y = -0.8;
+  scene.add(containment);
+  // containment ring at base
+  const contRing = new THREE.Mesh(
+    new THREE.TorusGeometry(2.8, 0.02, 12, 64),
+    new THREE.MeshStandardMaterial({ color: 0x3355aa, roughness: 0.5, metalness: 0.3, transparent: true, opacity: 0.25 })
+  );
+  contRing.position.y = -0.8;
+  contRing.rotation.x = Math.PI/2;
+  scene.add(contRing);
+
+  // === PRIMARY CIRCUIT: 4 LOOPS ===
+  const loops = [];
+  const pipeR = 0.038;
+  const dotGeo = new THREE.SphereGeometry(0.022, 8, 8);
+
+  // SG: large horizontal vessel with integrated caps
+  const sgR = 0.18, sgLen = 0.90;
+  const sgBodyGeo = new THREE.CapsuleGeometry(sgR, sgLen, 16, 28);
+
+  // pump: visible volute shape
+  const pumpBodyGeo = new THREE.CylinderGeometry(0.12, 0.12, 0.22, 24);
+  const pumpFlangeGeo = new THREE.TorusGeometry(0.13, 0.018, 10, 24);
+
+  function makeHotMat(){ return new THREE.MeshStandardMaterial({ color: 0xd4836b, roughness: 0.38, metalness: 0.42, emissive: 0x000000 }); }
+  function makeColdMat(){ return new THREE.MeshStandardMaterial({ color: 0x5a9ec7, roughness: 0.38, metalness: 0.42, emissive: 0x000000 }); }
+
+  function makeTube(curve, mat, radius){
+    const geo = new THREE.TubeGeometry(curve, 72, radius || pipeR, 14, false);
+    const m = new THREE.Mesh(geo, mat);
+    m.castShadow = true;
+    return m;
+  }
+
+  const loopAngles = [0, Math.PI/2, Math.PI, Math.PI*3/2];
+  const sgDist = 1.65;
+  const pumpDist = 1.20;
+
+  for (let i = 0; i < 4; i++) {
+    const g = new THREE.Group();
+    const ang = loopAngles[i];
+    const ca = Math.cos(ang), sa = Math.sin(ang);
+
+    // SG: elevated, far out
+    const sgX = ca * sgDist, sgZ = sa * sgDist, sgY = 0.15;
+    // perpendicular direction for SG orientation
+    const pdx = -sa, pdz = ca;
+
+    // === Steam Generator (ПГ) ===
+    const sgMat = new THREE.MeshStandardMaterial({ color: 0xc8b080, roughness: 0.35, metalness: 0.50, emissive: 0x000000 });
+    const sgBody = new THREE.Mesh(sgBodyGeo, sgMat);
+    sgBody.position.set(sgX, sgY, sgZ);
+    // lay it horizontal along the perpendicular direction
+    sgBody.quaternion.setFromAxisAngle(new THREE.Vector3(0,1,0), ang);
+    sgBody.rotateZ(Math.PI/2);
+    sgBody.castShadow = true;
+    g.add(sgBody);
+
+    // SG inlet/outlet nozzles (small cylinders pointing toward reactor)
+    const nozSgGeo = new THREE.CylinderGeometry(0.032, 0.032, 0.12, 10);
+    const nozSgMat = new THREE.MeshStandardMaterial({ color: 0x8899aa, roughness: 0.4, metalness: 0.5 });
+    // hot inlet (top)
+    const ni = new THREE.Mesh(nozSgGeo, nozSgMat);
+    ni.position.set(sgX - ca*0.12, sgY + 0.06, sgZ - sa*0.12);
+    ni.rotation.z = Math.PI/2;
+    ni.rotation.y = -ang;
+    g.add(ni);
+    // cold outlet (bottom)
+    const no = new THREE.Mesh(nozSgGeo, nozSgMat);
+    no.position.set(sgX - ca*0.12, sgY - 0.12, sgZ - sa*0.12);
+    no.rotation.z = Math.PI/2;
+    no.rotation.y = -ang;
+    g.add(no);
+
+    // secondary steam pipe going up from SG top
+    const steamPipeGeo = new THREE.CylinderGeometry(0.025, 0.025, 0.5, 10);
+    const steamPipeMat = new THREE.MeshStandardMaterial({ color: 0x8899aa, roughness: 0.4, metalness: 0.5 });
+    const steamPipe = new THREE.Mesh(steamPipeGeo, steamPipeMat);
+    steamPipe.position.set(sgX, sgY + sgR + 0.25, sgZ);
+    steamPipe.castShadow = true;
+    g.add(steamPipe);
+    // steam pipe elbow (small sphere)
+    const elbGeo = new THREE.SphereGeometry(0.03, 10, 10);
+    const elb = new THREE.Mesh(elbGeo, steamPipeMat);
+    elb.position.set(sgX, sgY + sgR + 0.50, sgZ);
+    g.add(elb);
+
+    // SG support structure (saddle supports)
+    const legMat = new THREE.MeshStandardMaterial({ color: 0x556677, roughness: 0.55, metalness: 0.45 });
+    for (const off of [-sgLen*0.28, sgLen*0.28]) {
+      // vertical leg
+      const legG = new THREE.CylinderGeometry(0.018, 0.022, sgY + 0.55, 8);
+      const leg = new THREE.Mesh(legG, legMat);
+      leg.position.set(sgX + pdx*off, sgY - (sgY+0.55)/2 - 0.08, sgZ + pdz*off);
+      g.add(leg);
+      // cross brace
+      const brG = new THREE.BoxGeometry(0.15, 0.015, 0.015);
+      const br = new THREE.Mesh(brG, legMat);
+      br.position.set(sgX + pdx*off, -0.55, sgZ + pdz*off);
+      br.rotation.y = ang;
+      g.add(br);
+    }
+
+    // === ГЦН (Main Circulation Pump) ===
+    const pumpX = ca * pumpDist, pumpZ = sa * pumpDist, pumpY = -0.38;
+    const pMat = new THREE.MeshStandardMaterial({ color: 0x7a8a9c, roughness: 0.30, metalness: 0.60, emissive: 0x000000 });
+    const pumpBody = new THREE.Mesh(pumpBodyGeo, pMat);
+    pumpBody.position.set(pumpX, pumpY, pumpZ);
+    pumpBody.castShadow = true;
+    g.add(pumpBody);
+
+    // pump flanges
+    for (const fy of [-0.09, 0.09]) {
+      const pf = new THREE.Mesh(pumpFlangeGeo, flangeMat.clone());
+      pf.position.set(pumpX, pumpY + fy, pumpZ);
+      pf.rotation.x = Math.PI/2;
+      g.add(pf);
+    }
+    // pump motor (tall cylinder on top)
+    const motorGeo = new THREE.CylinderGeometry(0.055, 0.075, 0.30, 14);
+    const motorMat = new THREE.MeshStandardMaterial({ color: 0x4a5a6a, roughness: 0.35, metalness: 0.55 });
+    const motor = new THREE.Mesh(motorGeo, motorMat);
+    motor.position.set(pumpX, pumpY + 0.26, pumpZ);
+    motor.castShadow = true;
+    g.add(motor);
+    // motor cap
+    const mcGeo = new THREE.SphereGeometry(0.055, 12, 8, 0, Math.PI*2, 0, Math.PI/2);
+    const mc = new THREE.Mesh(mcGeo, motorMat);
+    mc.position.set(pumpX, pumpY + 0.41, pumpZ);
+    g.add(mc);
+
+    // === HOT LEG (reactor -> SG, upper pipe) ===
+    const hotStart = new THREE.Vector3(ca*(vesselR+0.05), nozzleH, sa*(vesselR+0.05));
+    const hotCurve = new THREE.CatmullRomCurve3([
+      hotStart,
+      new THREE.Vector3(ca*0.65, nozzleH + 0.06, sa*0.65),
+      new THREE.Vector3(ca*1.05, sgY + 0.15, sa*1.05),
+      new THREE.Vector3(ca*1.35, sgY + 0.10, sa*1.35),
+      new THREE.Vector3(sgX - ca*0.12, sgY + 0.06, sgZ - sa*0.12),
+    ]);
+    const hotTube = makeTube(hotCurve, makeHotMat());
+    g.add(hotTube);
+
+    // === COLD LEG (SG -> pump -> reactor, lower pipe) ===
+    const coldCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(sgX - ca*0.12, sgY - 0.12, sgZ - sa*0.12),
+      new THREE.Vector3(ca*1.35, 0.0, sa*1.35),
+      new THREE.Vector3(ca*1.25, pumpY + 0.12, sa*1.25),
+      new THREE.Vector3(pumpX + ca*0.02, pumpY + 0.05, pumpZ + sa*0.02),
+      new THREE.Vector3(pumpX - ca*0.10, pumpY, pumpZ - sa*0.10),
+      new THREE.Vector3(ca*0.75, -0.25, sa*0.75),
+      new THREE.Vector3(ca*(vesselR+0.05), -0.18, sa*(vesselR+0.05)),
+    ]);
+    const coldTube = makeTube(coldCurve, makeColdMat());
+    g.add(coldTube);
+
+    // === NOZZLE stubs at vessel ===
+    const nozGeo = new THREE.CylinderGeometry(pipeR+0.01, pipeR+0.01, 0.08, 12);
+    const nozMat = new THREE.MeshStandardMaterial({ color: 0x99aabb, roughness: 0.4, metalness: 0.5 });
+    const nozH = new THREE.Mesh(nozGeo, nozMat);
+    nozH.position.set(ca*(vesselR+0.02), nozzleH, sa*(vesselR+0.02));
+    nozH.rotation.z = Math.PI/2;
+    nozH.rotation.y = -ang;
+    g.add(nozH);
+    const nozC = new THREE.Mesh(nozGeo, nozMat);
+    nozC.position.set(ca*(vesselR+0.02), -0.18, sa*(vesselR+0.02));
+    nozC.rotation.z = Math.PI/2;
+    nozC.rotation.y = -ang;
+    g.add(nozC);
+
+    // === COMPONENT LABELS ===
+    // SG label
+    const sgLabel = makeLabel('SG-' + (i+1), 36);
+    sgLabel.scale.set(0.5, 0.13, 1);
+    sgLabel.material.opacity = 0.6;
+    sgLabel.position.set(sgX, sgY - sgR - 0.15, sgZ);
+    g.add(sgLabel);
+
+    // Pump label
+    const pumpLabel = makeLabel('MCP-' + (i+1), 32);
+    pumpLabel.scale.set(0.45, 0.12, 1);
+    pumpLabel.material.opacity = 0.5;
+    pumpLabel.position.set(pumpX, pumpY - 0.22, pumpZ);
+    g.add(pumpLabel);
+
+    // steam indicator
+    const steam = makeLabel('steam', 40);
+    steam.scale.set(0.7, 0.18, 1);
+    steam.material.opacity = 0.0;
+    steam.position.set(sgX, sgY + 0.55, sgZ);
+    g.add(steam);
+
+    // === FLOW DOTS ===
+    const dots = [];
+    for (let k = 0; k < 14; k++) {
+      const dm = new THREE.MeshStandardMaterial({ color: 0xeef4fa, roughness: 0.3, metalness: 0.0, emissive: 0x000000 });
+      const d = new THREE.Mesh(dotGeo, dm);
+      g.add(d);
+      dots.push({ mesh: d, t: (k/14) });
+    }
+
+    scene.add(g);
+    loops.push({
+      group: g, hotCurve, coldCurve, hotTube, coldTube,
+      pump: pumpBody, sg: sgBody, steam, dots,
+      sgMat, pMat
+    });
+  }
+
+  // === CARAVANS (shipments orbiting) ===
   const caravans = [];
-  const capGeo = new THREE.CapsuleGeometry(0.08, 0.18, 4, 8);
-  for (let i=0;i<10;i++){
-    const m = new THREE.MeshStandardMaterial({ color: 0x60a5fa, roughness: 0.3, metalness: 0.2, emissive: 0x000000 });
+  const capGeo = new THREE.CapsuleGeometry(0.06, 0.14, 4, 8);
+  for (let i = 0; i < 10; i++) {
+    const m = new THREE.MeshStandardMaterial({ color: 0x60a5fa, roughness: 0.3, metalness: 0.3, emissive: 0x000000 });
     const cap = new THREE.Mesh(capGeo, m);
     cap.rotation.z = Math.PI/2;
     scene.add(cap);
     caravans.push({ mesh: cap, phase: (i/10) * Math.PI*2, spd: 1.0 });
   }
 
-  // control rods: purely visual, driven by `control_rod_pct` from /status.
-  const rods = [];
-  const rodGeo = new THREE.CylinderGeometry(0.03, 0.03, 1.2, 12);
-  const rodMat = new THREE.MeshStandardMaterial({ color: 0x9fb1c1, roughness: 0.6, metalness: 0.1 });
-  for (let i=0;i<16;i++){
-    const rod = new THREE.Mesh(rodGeo, rodMat);
-    const a = (i/16) * Math.PI*2;
-    const rr = 0.35;
-    rod.position.set(Math.cos(a)*rr, 0.55, Math.sin(a)*rr);
-    scene.add(rod);
-    rods.push(rod);
-  }
-
-  // 1st circuit: 4 loops. each loop has: hot leg + steam generator + cold leg + gcn pump.
-  // we draw it as a simplified pipe run (not a torus) to look closer to the reference diagram.
-  const loops = [];
-
-  const hotMat = new THREE.MeshStandardMaterial({ color: 0x7dd3fc, roughness: 0.85, metalness: 0.05, emissive: 0x000000 });
-  const coldMat = new THREE.MeshStandardMaterial({ color: 0x60a5fa, roughness: 0.85, metalness: 0.05, emissive: 0x000000 });
-
-  const pipeR = 0.028;
-  const pumpGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.16, 16);
-  const pumpMat = new THREE.MeshStandardMaterial({ color: 0x9fb1c1, roughness: 0.35, metalness: 0.25, emissive: 0x000000 });
-
-  // sg: horizontal heat exchanger
-  const sgGeo = new THREE.CylinderGeometry(0.07, 0.07, 0.34, 18);
-  const sgMat = new THREE.MeshStandardMaterial({ color: 0xfbbf24, roughness: 0.55, metalness: 0.08, emissive: 0x000000 });
-
-  // particles that show flow direction
-  const dotGeo = new THREE.SphereGeometry(0.012, 10, 10);
-
-  function makeTube(curve, mat){
-    const geo = new THREE.TubeGeometry(curve, 80, pipeR, 10, false);
-    return new THREE.Mesh(geo, mat);
-  }
-
-  for (let i=0;i<4;i++){
-    const g = new THREE.Group();
-    g.rotation.y = (i/4) * Math.PI*2;
-
-    // anchor points in local loop space
-    const coreTop = new THREE.Vector3(0.0, 0.48, 0.0);
-    const coreBot = new THREE.Vector3(0.0, -0.22, 0.0);
-
-    const sgPos = new THREE.Vector3(-0.95, 0.12, 0.0);
-    const pumpPos = new THREE.Vector3(0.80, -0.22, 0.0);
-
-    // hot leg: coreTop -> sgPos
-    const hotPts = [
-      coreTop,
-      new THREE.Vector3(-0.25, 0.55, 0.0),
-      new THREE.Vector3(-0.70, 0.40, 0.0),
-      new THREE.Vector3(sgPos.x + 0.20, sgPos.y + 0.10, 0.0),
-      new THREE.Vector3(sgPos.x + 0.05, sgPos.y + 0.08, 0.0),
-    ];
-    const hotCurve = new THREE.CatmullRomCurve3(hotPts);
-    const hotTube = makeTube(hotCurve, hotMat.clone());
-    g.add(hotTube);
-
-    // cold leg: sgPos -> pumpPos -> coreBot
-    const coldPts = [
-      new THREE.Vector3(sgPos.x + 0.05, sgPos.y - 0.08, 0.0),
-      new THREE.Vector3(-0.65, -0.10, 0.0),
-      new THREE.Vector3(-0.20, -0.25, 0.0),
-      pumpPos,
-      new THREE.Vector3(0.35, -0.25, 0.0),
-      coreBot,
-    ];
-    const coldCurve = new THREE.CatmullRomCurve3(coldPts);
-    const coldTube = makeTube(coldCurve, coldMat.clone());
-    g.add(coldTube);
-
-    const pump = new THREE.Mesh(pumpGeo, pumpMat.clone());
-    pump.position.copy(pumpPos);
-    pump.rotation.z = Math.PI/2;
-    g.add(pump);
-
-    const sg = new THREE.Mesh(sgGeo, sgMat.clone());
-    sg.position.copy(sgPos);
-    sg.rotation.z = Math.PI/2;
-    g.add(sg);
-
-    const steam = makeLabel('steam');
-    steam.scale.set(1.0, 0.25, 1);
-    steam.material.opacity = 0.0;
-    steam.position.set(sgPos.x, sgPos.y + 0.52, 0.0);
-    g.add(steam);
-
-    // flow dots on both legs (showing direction)
-    const dots = [];
-    for (let k=0;k<12;k++){
-      const m = new THREE.MeshStandardMaterial({ color: 0xe2e8f0, roughness: 0.4, metalness: 0.0, emissive: 0x000000 });
-      const d = new THREE.Mesh(dotGeo, m);
-      g.add(d);
-      dots.push({ mesh: d, t: (k/12) });
-    }
-
-    scene.add(g);
-    loops.push({ group: g, hotCurve, coldCurve, hotTube, coldTube, pump, sg, steam, dots });
-  }
-
+  // === STATE ===
   let impactShakeUntil = 0;
+  let rodPct = 0, flow = 0, steamFlow = 0;
+  let sn = [true,true,true];
+  let alarmsStr = '';
+  let camAngle = 0;
 
   function resize(){
     const w = Math.max(1, host.clientWidth || 1);
@@ -2193,7 +2416,6 @@ const UI_HTML: &str = r##"<!doctype html>
     camera.aspect = w/h;
     camera.updateProjectionMatrix();
   }
-
   window.addEventListener('resize', resize);
   resize();
 
@@ -2206,12 +2428,6 @@ const UI_HTML: &str = r##"<!doctype html>
     const b = lerp(0xbf, 0x85, t) / 255;
     return new THREE.Color(r,g,b);
   }
-
-  let rodPct = 0;
-  let flow = 0;
-  let steamFlow = 0;
-  let sn = [true,true,true];
-  let alarmsStr = '';
 
   async function poll(){
     try {
@@ -2228,10 +2444,15 @@ const UI_HTML: &str = r##"<!doctype html>
       steamFlow = (st.steam_flow_kg_s || 0);
       sn = [!!st.sn_a_on, !!st.sn_b_on, !!st.sn_c_on];
 
+      // vessel color changes with temperature
       const c = tempColor(tempC);
-      cubeMat.color.copy(c);
-      cubeMat.emissive.copy(c).multiplyScalar(0.12);
-      cube.scale.y = 0.5 + (p/100)*1.4;
+      vesselMat.emissive.copy(c).multiplyScalar(0.08);
+
+      // core glow intensity based on power
+      const pn = Math.max(0, Math.min(1, avgP / 100));
+      coreGlow.intensity = pn * 2.5;
+      coreGlow.color.copy(c);
+      coreGlow2.intensity = pn * 1.2;
 
       const alarmStr = (st.alarms || []).join(' ');
       alarmsStr = alarmStr;
@@ -2242,14 +2463,19 @@ const UI_HTML: &str = r##"<!doctype html>
         label.material.opacity = 0.9;
       }
 
-      // shake only on containment hit
-      if (alarmStr.includes('containment_hit')) impactShakeUntil = Date.now() + 2000;
+      if (alarmStr.includes('containment_hit')) {
+        impactShakeUntil = Date.now() + 2000;
+        contMat.opacity = 0.15;
+        contMat.color.setHex(0xaa4444);
+      } else {
+        contMat.opacity = 0.06;
+        contMat.color.setHex(0x4466aa);
+      }
 
       const spd = 0.5 + (avgP/100)*2.5;
-      for (const c of caravans) c.spd = spd;
+      for (const cv of caravans) cv.spd = spd;
     } catch(e) {}
   }
-
   poll();
   setInterval(poll, 1000);
 
@@ -2257,78 +2483,74 @@ const UI_HTML: &str = r##"<!doctype html>
   function animate(){
     requestAnimationFrame(animate);
     const dt = Math.min(0.05, clock.getDelta());
+    const t = clock.elapsedTime;
 
-    cube.rotation.y += dt * 0.35;
-
+    // slow orbit camera
+    camAngle += dt * 0.06;
+    const camR = 4.2;
+    const camH = 2.6;
     const now = Date.now();
     const shake = now < impactShakeUntil;
-    if (shake) {
-      camera.position.x = (Math.random()-0.5)*0.08;
-      camera.position.y = 1.15 + (Math.random()-0.5)*0.08;
-    } else {
-      camera.position.x = 0.0;
-      camera.position.y = 1.15;
-    }
-    camera.position.z = 2.35;
+    const sx = shake ? (Math.random()-0.5)*0.12 : 0;
+    const sy = shake ? (Math.random()-0.5)*0.12 : 0;
+    camera.position.set(
+      Math.cos(camAngle) * camR + sx,
+      camH + sy,
+      Math.sin(camAngle) * camR
+    );
     camera.lookAt(0, 0.1, 0);
 
-    // rods: map 0..100% to vertical insertion
+    // control rods: insertion depth
+    const ins = Math.max(0, Math.min(1, rodPct / 100));
     for (const rod of rods) {
-      const ins = Math.max(0, Math.min(1, rodPct / 100));
-      rod.position.y = 0.55 - ins * 0.55;
+      rod.mesh.position.y = rod.baseY - ins * 0.5;
     }
 
-    // loops: gcn + sg + flow direction dots.
-    // section mapping: sn_a -> loops 0-1, sn_b -> loop 2, sn_c -> loop 3
+    // loops
     const loopOn = [sn[0], sn[0], sn[1], sn[2]];
     const flowN = Math.max(0, Math.min(1, flow / 15000));
     const steamN = Math.max(0, Math.min(1, steamFlow / 2000));
+    const hot = alarmsStr.includes('temp_high');
 
-    for (let i=0;i<loops.length;i++){
+    for (let i = 0; i < loops.length; i++) {
       const on = loopOn[i];
       const L = loops[i];
 
-      const hot = alarmsStr.includes('temp_high');
+      // hot/cold pipe coloring
+      L.hotTube.material.color.setHex(on ? 0xe8967a : 0x2a2025);
       L.hotTube.material.emissive.setHex(hot ? 0x3b0b0b : 0x000000);
-      L.coldTube.material.emissive.setHex(hot ? 0x220b0b : 0x000000);
+      L.coldTube.material.color.setHex(on ? 0x6aaddb : 0x1a2530);
+      L.coldTube.material.emissive.setHex(hot ? 0x150808 : 0x000000);
 
-      // on/off tint
-      L.hotTube.material.opacity = 1.0;
-      L.coldTube.material.opacity = 1.0;
-      L.hotTube.material.transparent = false;
-      L.coldTube.material.transparent = false;
-      L.hotTube.material.color.setHex(on ? 0x7dd3fc : 0x141b24);
-      L.coldTube.material.color.setHex(on ? 0x60a5fa : 0x141b24);
-
-      L.pump.material.color.setHex(on ? 0x9fb1c1 : 0x1f2937);
-      L.pump.material.emissive.setHex(on ? 0x000000 : 0x220000);
-
-      L.sg.material.color.setHex(on ? 0xfbbf24 : 0x4b5563);
+      // SG color
+      L.sg.material.color.setHex(on ? 0xd4a853 : 0x3a3228);
       L.sg.material.emissive.setHex(on ? 0x1a1200 : 0x000000);
 
-      const spin = (on ? (0.6 + flowN*5.0) : 0.08);
-      L.pump.rotation.x += dt * spin;
+      // pump
+      L.pump.material.color.setHex(on ? 0x8899aa : 0x2a2d33);
+      L.pump.material.emissive.setHex(on ? 0x000000 : 0x110000);
+      L.pump.rotation.y += dt * (on ? (0.8 + flowN * 6.0) : 0.1);
 
-      // steam visibility
-      L.steam.material.opacity = on ? (0.05 + steamN * 0.65) : 0.0;
-      L.steam.position.y = 0.64 + 0.04*Math.sin(clock.elapsedTime*2 + i);
+      // steam label
+      L.steam.material.opacity = on ? (0.05 + steamN * 0.6) : 0.0;
 
-      // dots: advance along a virtual full-loop param (0..1)
+      // flow dots
       for (const d of L.dots) {
-        d.t = (d.t + dt * (on ? (0.10 + flowN*0.80) : 0.02)) % 1.0;
+        d.t = (d.t + dt * (on ? (0.12 + flowN * 0.85) : 0.02)) % 1.0;
         const tt = d.t;
         const p = tt < 0.5 ? L.hotCurve.getPointAt(tt*2) : L.coldCurve.getPointAt((tt-0.5)*2);
         d.mesh.position.copy(p);
-        d.mesh.material.emissive.setHex(on ? 0x000000 : 0x220000);
+        d.mesh.material.color.setHex(on ? 0xeef4fa : 0x333840);
+        d.mesh.material.emissive.setHex(on ? (tt < 0.5 ? 0x331108 : 0x081833) : 0x000000);
       }
     }
 
-    const t = clock.elapsedTime;
-    for (const c of caravans) {
-      const a = c.phase + t * (c.spd || 1);
-      const r = 1.35 + 0.15*Math.sin(a*2);
-      c.mesh.position.set(Math.cos(a)*r, 0.05*Math.sin(a*3), Math.sin(a)*r);
-      c.mesh.lookAt(0, 0, 0);
+    // caravans
+    for (const cv of caravans) {
+      const a = cv.phase + t * (cv.spd || 1);
+      const r = 2.4 + 0.15*Math.sin(a*2);
+      cv.mesh.position.set(Math.cos(a)*r, -0.65 + 0.05*Math.sin(a*3), Math.sin(a)*r);
+      cv.mesh.lookAt(0, -0.5, 0);
     }
 
     renderer.render(scene, camera);
