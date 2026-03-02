@@ -47,7 +47,8 @@
     nozzleH: 0.18,
     containmentR: 2.8,
     platformR: 3.5,
-    loopAngles: [0, Math.PI / 2, Math.PI, Math.PI * 3 / 2],
+    // vver-ish: SGs are grouped in 2 pairs on opposite sides; within a pair ~30deg separation.
+    loopAngles: [-(Math.PI / 12), (Math.PI / 12), Math.PI - (Math.PI / 12), Math.PI + (Math.PI / 12)],
   };
 
   const ORBIT = {
