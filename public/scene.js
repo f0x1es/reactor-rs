@@ -43,7 +43,7 @@
     vesselR: 0.32, vesselH: 1.6,
     pipeR: 0.038,
     sgR: 0.18, sgLen: 0.90,
-    sgDist: 1.65, pumpDist: 1.20,
+    sgDist: 1.65, pumpDist: 2.15,
     nozzleH: 0.18,
     containmentR: 2.8,
     platformR: 3.5,
@@ -490,10 +490,12 @@
     g.add(hotTube);
 
     const coldMat = new THREE.MeshStandardMaterial({ color: COLORS.coldPipe, roughness: 0.38, metalness: 0.42 });
+    const midDist = (sgDist + pumpDist) * 0.50;
     const coldCurve = new THREE.CatmullRomCurve3([
       new THREE.Vector3(sgX - ca * 0.12, sgY - 0.12, sgZ - sa * 0.12),
-      new THREE.Vector3(ca * 1.35, 0.0, sa * 1.35),
-      new THREE.Vector3(ca * 1.25, pumpY + 0.12, sa * 1.25),
+      // pull the cold leg outward so the pump sits outside the SG (reference diagram)
+      new THREE.Vector3(ca * midDist, -0.06, sa * midDist),
+      new THREE.Vector3(ca * (pumpDist - 0.18), pumpY + 0.14, sa * (pumpDist - 0.18)),
       new THREE.Vector3(pumpX + ca * 0.02, pumpY + 0.05, pumpZ + sa * 0.02),
       new THREE.Vector3(pumpX - ca * 0.10, pumpY, pumpZ - sa * 0.10),
       new THREE.Vector3(ca * 0.75, -0.25, sa * 0.75),
