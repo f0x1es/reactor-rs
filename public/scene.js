@@ -546,7 +546,150 @@
     }
 
     scene.add(g);
-    return { group: g, hotCurve, coldCurve, hotTube, coldTube, pump: pumpBody, sg: sgBody, steam, dots, sgMat, pMat };
+
+    // anchor points for secondary loop (decorative)
+    const steamOut = new THREE.Vector3(sgX, sgY + sgR + 0.50, sgZ);
+    const feedIn = new THREE.Vector3(sgX - ca * 0.12, sgY - 0.12, sgZ - sa * 0.12);
+
+    return { group: g, hotCurve, coldCurve, hotTube, coldTube, pump: pumpBody, sg: sgBody, steam, dots, sgMat, pMat, steamOut, feedIn, ang };
+  }
+
+  // ── geometry: secondary loop (decorative blocks only) ──────────
+
+  const secondary = {
+    curves: [],
+    dots: [],
+    turbine: null,
+  };
+
+  function buildSecondary(loopObjs) {
+    const headerR = 2.55;
+    const headerY = 1.05;
+
+    const steamMat = new THREE.MeshStandardMaterial({ color: 0xbcc6d3, roughness: 0.45, metalness: 0.35 });
+    const feedMat = new THREE.MeshStandardMaterial({ color: 0x5aa0c9, roughness: 0.45, metalness: 0.35 });
+
+    // steam header ring
+    const header = new THREE.Mesh(
+      new THREE.TorusGeometry(headerR, 0.018, 10, 72),
+      steamMat,
+    );
+    header.position.y = headerY;
+    header.rotation.x = Math.PI / 2;
+    header.castShadow = true;
+    scene.add(header);
+
+    // turbine block
+    const turbMat = new THREE.MeshStandardMaterial({ color: 0x9aa7b6, roughness: 0.35, metalness: 0.55 });
+    const turbine = new THREE.Mesh(new THREE.CylinderGeometry(0.20, 0.20, 0.95, 24), turbMat);
+    turbine.position.set(3.55, 0.22, 0.0);
+    turbine.rotation.z = Math.PI / 2;
+    turbine.castShadow = true;
+    scene.add(turbine);
+    secondary.turbine = turbine;
+
+    const turbLabel = makeLabel('turbine', 44);
+    turbLabel.scale.set(1.2, 0.30, 1);
+    turbLabel.material.opacity = 0.85;
+    turbLabel.position.set(3.55, 0.68, 0.0);
+    scene.add(turbLabel);
+
+    // condenser block
+    const condMat = new THREE.MeshStandardMaterial({ color: 0x6b7280, roughness: 0.55, metalness: 0.25 });
+    const condenser = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.42, 0.55), condMat);
+    condenser.position.set(3.55, -0.55, 0.0);
+    condenser.castShadow = true;
+    scene.add(condenser);
+
+    const condLabel = makeLabel('cond', 44);
+    condLabel.scale.set(1.0, 0.26, 1);
+    condLabel.material.opacity = 0.75;
+    condLabel.position.set(3.55, -0.08, 0.0);
+    scene.add(condLabel);
+
+    // main steam line: header -> turbine
+    const steamMainCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(headerR, headerY, 0.0),
+      new THREE.Vector3(3.05, headerY, 0.0),
+      new THREE.Vector3(3.25, 0.55, 0.0),
+      new THREE.Vector3(3.10, 0.22, 0.0),
+    ]);
+    secondary.curves.push({ curve: steamMainCurve, kind: 'steam' });
+    scene.add(makeTube(steamMainCurve, steamMat, 0.020));
+
+    // exhaust steam: turbine -> condenser
+    const exhaustCurve = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(4.02, 0.22, 0.0),
+      new THREE.Vector3(4.15, -0.20, 0.0),
+      new THREE.Vector3(3.95, -0.55, 0.0),
+    ]);
+    secondary.curves.push({ curve: exhaustCurve, kind: 'steam' });
+    scene.add(makeTube(exhaustCurve, steamMat, 0.018));
+
+    // feedwater header (return) - low ring
+    const feedHeaderR = 2.35;
+    const feedHeaderY = -0.10;
+    const feedHeader = new THREE.Mesh(
+      new THREE.TorusGeometry(feedHeaderR, 0.016, 10, 72),
+      feedMat,
+    );
+    feedHeader.position.y = feedHeaderY;
+    feedHeader.rotation.x = Math.PI / 2;
+    feedHeader.castShadow = true;
+    scene.add(feedHeader);
+
+    // condenser -> feed header
+    const condToFeed = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(3.00, -0.55, 0.0),
+      new THREE.Vector3(2.70, -0.25, 0.0),
+      new THREE.Vector3(feedHeaderR, feedHeaderY, 0.0),
+    ]);
+    secondary.curves.push({ curve: condToFeed, kind: 'feed' });
+    scene.add(makeTube(condToFeed, feedMat, 0.016));
+
+    // connect each SG to steam header + feed header
+    for (const L of loopObjs) {
+      const a = Math.atan2(L.steamOut.z, L.steamOut.x);
+      const hx = Math.cos(a) * headerR;
+      const hz = Math.sin(a) * headerR;
+      const headerPoint = new THREE.Vector3(hx, headerY, hz);
+
+      const steamCurve = new THREE.CatmullRomCurve3([
+        L.steamOut.clone(),
+        new THREE.Vector3(L.steamOut.x * 0.85, headerY - 0.08, L.steamOut.z * 0.85),
+        headerPoint,
+      ]);
+      secondary.curves.push({ curve: steamCurve, kind: 'steam' });
+      scene.add(makeTube(steamCurve, steamMat, 0.014));
+
+      const fx = Math.cos(a) * feedHeaderR;
+      const fz = Math.sin(a) * feedHeaderR;
+      const feedPoint = new THREE.Vector3(fx, feedHeaderY, fz);
+
+      const feedCurve = new THREE.CatmullRomCurve3([
+        feedPoint,
+        new THREE.Vector3(L.feedIn.x * 0.85, feedHeaderY + 0.06, L.feedIn.z * 0.85),
+        L.feedIn.clone(),
+      ]);
+      secondary.curves.push({ curve: feedCurve, kind: 'feed' });
+      scene.add(makeTube(feedCurve, feedMat, 0.012));
+    }
+
+    // flow dots for secondary
+    const dotGeo2 = new THREE.SphereGeometry(0.016, 8, 8);
+    for (let i = 0; i < secondary.curves.length; i++) {
+      const { kind } = secondary.curves[i];
+      for (let k = 0; k < 6; k++) {
+        const dm = new THREE.MeshStandardMaterial({
+          color: kind === 'steam' ? 0xeef4fa : 0xa7d5f2,
+          roughness: 0.25,
+          metalness: 0.0,
+        });
+        const d = new THREE.Mesh(dotGeo2, dm);
+        scene.add(d);
+        secondary.dots.push({ mesh: d, curveIndex: i, t: (k / 6) });
+      }
+    }
   }
 
   // ── geometry: caravans ─────────────────────────────────────────
@@ -571,6 +714,7 @@
   buildControlRods();
   buildContainment();
   for (let i = 0; i < 4; i++) loops.push(buildLoop(i));
+  buildSecondary(loops);
   buildCaravans();
 
   // ── reactor state (updated by polling) ─────────────────────────
@@ -722,6 +866,20 @@
         d.mesh.material.emissive.setHex(on ? (d.t < 0.5 ? 0x331108 : 0x081833) : 0x000000);
       }
     }
+
+    // secondary flow dots (decorative)
+    for (const d of secondary.dots) {
+      const C = secondary.curves[d.curveIndex];
+      const spd = (C && C.kind === 'steam') ? (0.10 + steamN * 0.90) : (0.05 + flowN * 0.60);
+      d.t = (d.t + dt * spd) % 1.0;
+      const p = C.curve.getPointAt(d.t);
+      d.mesh.position.copy(p);
+      d.mesh.material.opacity = 1.0;
+      d.mesh.material.transparent = false;
+    }
+
+    // turbine spin hint (decorative)
+    if (secondary.turbine) secondary.turbine.rotation.x += dt * (0.4 + steamN * 5.0);
 
     // caravans orbit
     for (const cv of caravanMeshes) {
