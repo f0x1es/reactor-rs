@@ -98,16 +98,50 @@
   pollHistory();
   setInterval(pollHistory, 1000);
 
-  // fire theme: when temp_high alarm is active the whole ui goes into burn mode.
-  async function pollHeatTheme(){
+  // fire theme: prefer scene.js status events; fallback to polling only when scene isn't active (e.g. webgl off).
+  function applyHeatTheme(st){
+    const hot = !!(st && Array.isArray(st.alarms) && st.alarms.includes('temp_high'));
+    document.body.classList.toggle('temp-high', hot);
+  }
+
+  let lastStatusEventAt = 0;
+  let fallbackTimer = null;
+
+  async function fallbackPollOnce() {
     try {
       const r = await fetch('/status');
       if (!r.ok) return;
       const st = await r.json();
-      const hot = Array.isArray(st.alarms) && st.alarms.includes('temp_high');
-      document.body.classList.toggle('temp-high', hot);
+      applyHeatTheme(st);
     } catch (e) {}
   }
-  pollHeatTheme();
-  setInterval(pollHeatTheme, 1000);
+
+  function startFallbackPoll() {
+    if (fallbackTimer) return;
+    fallbackPollOnce();
+    fallbackTimer = setInterval(() => {
+      // stop fallback as soon as scene.js starts emitting events
+      if (Date.now() - lastStatusEventAt < 1500) {
+        clearInterval(fallbackTimer);
+        fallbackTimer = null;
+        return;
+      }
+      fallbackPollOnce();
+    }, 1000);
+  }
+
+  window.addEventListener('reactor:status', (ev) => {
+    lastStatusEventAt = Date.now();
+    applyHeatTheme(ev.detail);
+  });
+
+  if (window.__reactorStatus) {
+    lastStatusEventAt = Date.now();
+    applyHeatTheme(window.__reactorStatus);
+  }
+
+  // if no scene status events arrived quickly, enable fallback polling.
+  setTimeout(() => {
+    if (Date.now() - lastStatusEventAt > 1500) startFallbackPoll();
+  }, 1700);
 })();

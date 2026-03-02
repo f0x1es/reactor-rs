@@ -581,6 +581,12 @@
       const alarmStr = (st.alarms || []).join(' ');
       reactorState.alarms = alarmStr;
 
+      // share latest status with other ui modules without extra polling
+      try {
+        window.__reactorStatus = st;
+        window.dispatchEvent(new CustomEvent('reactor:status', { detail: st }));
+      } catch (e) { }
+
       if (alarmStr.includes('containment_hit')) {
         reactorState.impactShakeUntil = Date.now() + 2000;
         contMat.opacity = 0.15;
