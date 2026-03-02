@@ -1,0 +1,168 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>reactor-rs</title>
+  <script src="https://cdn.jsdelivr.net/npm/htmx.org@2.0.4/dist/htmx.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+  <script src="https://unpkg.com/three@0.150.1/build/three.min.js"></script>
+  <link rel="stylesheet" href="/assets/style.css" />
+</head>
+<body>
+  <div class="app-container">
+    <header class="topbar">
+      <div class="topbar__brand">
+        <h1 class="topbar__title">reactor-rs</h1>
+        <span class="pill">mode: <b id="mode" hx-get="/ui/mode" hx-trigger="load, every 1s, refresh" hx-swap="innerHTML">-</b></span>
+      </div>
+      <div class="topbar__actions">
+        <div class="pill pill--clickable" id="musicBtn" role="button" tabindex="0">music: <b id="musicState">off</b></div>
+        <div class="pill">poll: <b>1s</b></div>
+      </div>
+    </header>
+
+    <div class="layout-col layout-col--left">
+      <section class="panel">
+        <header class="panel__header">
+          <div class="panel__title">control</div>
+          <div id="msg" class="text-msg"></div>
+        </header>
+        <div class="panel__body">
+          <div class="control-grid">
+            <!-- power -->
+            <fieldset class="control-group">
+              <legend class="control-group__legend">power</legend>
+              <form class="form-inline" hx-post="/ui/set_power" hx-target="#msg" hx-swap="innerHTML">
+                <label class="label">zone</label>
+                <input class="input input--sm" name="zone" type="number" min="0" max="99" value="0" />
+                <label class="label">target %</label>
+                <input class="input input--sm" name="target_power_pct" type="number" min="0" max="100" value="50" />
+                <button class="btn" type="submit">set</button>
+              </form>
+            </fieldset>
+
+            <!-- automation -->
+            <fieldset class="control-group">
+              <legend class="control-group__legend">automation</legend>
+              <div class="controls-row">
+                <form hx-post="/ui/auto" hx-target="#msg" hx-swap="innerHTML">
+                  <button class="btn" type="submit" name="enabled" value="1">auto on</button>
+                </form>
+                <form hx-post="/ui/auto" hx-target="#msg" hx-swap="innerHTML">
+                  <button class="btn" type="submit">auto off</button>
+                </form>
+              </div>
+              <form class="form-inline" hx-post="/ui/auto_setpoint" hx-target="#msg" hx-swap="innerHTML">
+                <label class="label">setpoint %</label>
+                <input class="input input--sm" name="power_pct" type="number" min="0" max="100" value="50" />
+                <button class="btn" type="submit">set</button>
+              </form>
+              <form class="form-inline" hx-post="/ui/rod" hx-target="#msg" hx-swap="innerHTML">
+                <label class="label">rod %</label>
+                <input class="input input--sm" name="rod_pct" type="number" min="0" max="100" value="0" />
+                <button class="btn" type="submit">set</button>
+              </form>
+            </fieldset>
+
+            <!-- auxiliary -->
+            <fieldset class="control-group">
+              <legend class="control-group__legend">auxiliary</legend>
+              <form class="form-inline" hx-post="/ui/charging" hx-target="#msg" hx-swap="innerHTML">
+                <label class="label">charging kg/s</label>
+                <input class="input input--sm" name="kg_s" type="number" min="0" max="5000" value="0" />
+                <button class="btn" type="submit">set</button>
+              </form>
+              <form class="form-inline" hx-post="/ui/letdown" hx-target="#msg" hx-swap="innerHTML">
+                <label class="label">letdown kg/s</label>
+                <input class="input input--sm" name="kg_s" type="number" min="0" max="5000" value="0" />
+                <button class="btn" type="submit">set</button>
+              </form>
+            </fieldset>
+
+            <!-- emergency -->
+            <fieldset class="control-group control-group--danger">
+              <legend class="control-group__legend control-group__legend--danger">emergency</legend>
+              <div class="controls-row">
+                <button class="btn btn--danger" type="button" hx-post="/ui/scram" hx-target="#msg" hx-swap="innerHTML">az-5</button>
+                <button class="btn" type="button" hx-post="/ui/reset" hx-target="#msg" hx-swap="innerHTML">reset</button>
+                <button class="btn btn--danger" type="button" hx-post="/ui/containment_hit" hx-target="#msg" hx-swap="innerHTML">containment hit</button>
+                <button class="btn btn--danger" type="button" hx-post="/ui/pipe_rupture" hx-target="#msg" hx-swap="innerHTML">pipe rupture</button>
+              </div>
+            </fieldset>
+          </div>
+
+          <div class="text-hint">zones 1-4 = extra load. auto keeps power/temp in check.</div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel__body panel__body--nopad panel__body--zones">
+          <table class="table table--zones">
+            <thead>
+              <tr>
+                <th style="width:64px;">zone</th>
+                <th style="width:120px;">name</th>
+                <th style="width:90px;">target</th>
+                <th>power</th>
+                <th>temp</th>
+              </tr>
+            </thead>
+            <tbody id="zones" hx-get="/ui/zones" hx-trigger="load, every 1s, refresh" hx-swap="innerHTML"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="panel">
+        <header class="panel__header">
+          <div class="panel__title">temperature trend</div>
+          <div class="pill">poll: <b>1s</b></div>
+        </header>
+        <div class="panel__body">
+          <div class="zones-temp__chart">
+            <canvas id="chart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel panel--grow">
+        <header class="panel__header">
+          <div class="panel__title">audit</div>
+          <div class="pill">last 24</div>
+        </header>
+        <div class="panel__body panel__body--nopad">
+          <div id="audit" class="audit-log" hx-get="/ui/audit" hx-trigger="load, every 1s" hx-select=".audit-log__line" hx-swap="innerHTML"></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="layout-col">
+      <section class="panel">
+        <header class="panel__header">
+          <div class="panel__title">3d</div>
+          <div class="pill">VVER-1000 primary circuit</div>
+        </header>
+        <div class="panel__body">
+          <div id="three" class="view-3d view-3d--main"></div>
+        </div>
+      </section>
+
+      <section class="panel panel--grow">
+        <header class="panel__header">
+          <div class="panel__title">alarms & caravans</div>
+          <div class="alarm-list" id="alarms" hx-get="/ui/alarms" hx-trigger="load, every 1s, refresh" hx-swap="innerHTML"></div>
+          <div class="pill" id="loot" hx-get="/ui/loot" hx-trigger="load, every 1s, refresh" hx-swap="innerHTML">loot: -</div>
+        </header>
+        <div class="panel__body panel__body--nopad">
+          <div class="table-wrapper table--caravans">
+            <div id="caravans" hx-get="/ui/caravans" hx-trigger="load, every 1s, refresh" hx-swap="innerHTML"></div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <script src="/assets/app.js"></script>
+  <script src="/assets/scene.js"></script>
+</body>
+</html>
