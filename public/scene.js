@@ -79,18 +79,32 @@
 
   function makeLabel(text, fontSize) {
     const c = document.createElement('canvas');
-    c.width = 512; c.height = 128;
+    c.width = 768; c.height = 192;
     const ctx = c.getContext('2d');
-    ctx.font = '700 ' + (fontSize || 56) + 'px ui-monospace, monospace';
+
+    const fs = fontSize || 64;
+    ctx.font = '800 ' + fs + 'px ui-monospace, monospace';
+    ctx.textBaseline = 'alphabetic';
+
+    // outline improves readability on bright backgrounds
+    ctx.lineWidth = Math.max(6, Math.round(fs * 0.18));
+    ctx.strokeStyle = 'rgba(4, 6, 10, 0.95)';
+
     ctx.fillStyle = '#e6edf3';
-    ctx.shadowColor = 'rgba(96,165,250,.7)';
-    ctx.shadowBlur = 16;
+    ctx.shadowColor = 'rgba(96,165,250,.75)';
+    ctx.shadowBlur = 22;
+
     const m = ctx.measureText(text);
-    ctx.fillText(text, Math.max(16, (c.width - m.width) / 2), 82);
+    const x = Math.max(24, (c.width - m.width) / 2);
+    const y = Math.round(c.height * 0.64);
+    ctx.strokeText(text, x, y);
+    ctx.fillText(text, x, y);
+
     const tex = new THREE.CanvasTexture(c);
+    tex.anisotropy = 4;
     const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
     const spr = new THREE.Sprite(mat);
-    spr.scale.set(1.6, 0.4, 1);
+    spr.scale.set(2.4, 0.6, 1);
     return spr;
   }
 
@@ -486,22 +500,22 @@
     }
 
     // ── labels ──
-    const sgLabel = makeLabel('SG-' + (i + 1), 36);
-    sgLabel.scale.set(0.5, 0.13, 1);
-    sgLabel.material.opacity = 0.6;
-    sgLabel.position.set(sgX, sgY - sgR - 0.15, sgZ);
+    const sgLabel = makeLabel('SG-' + (i + 1), 44);
+    sgLabel.scale.set(0.95, 0.24, 1);
+    sgLabel.material.opacity = 0.85;
+    sgLabel.position.set(sgX, sgY - sgR - 0.18, sgZ);
     g.add(sgLabel);
 
-    const pumpLabel = makeLabel('MCP-' + (i + 1), 32);
-    pumpLabel.scale.set(0.45, 0.12, 1);
-    pumpLabel.material.opacity = 0.5;
-    pumpLabel.position.set(pumpX, pumpY - 0.22, pumpZ);
+    const pumpLabel = makeLabel('MCP-' + (i + 1), 40);
+    pumpLabel.scale.set(0.9, 0.22, 1);
+    pumpLabel.material.opacity = 0.8;
+    pumpLabel.position.set(pumpX, pumpY - 0.24, pumpZ);
     g.add(pumpLabel);
 
-    const steam = makeLabel('steam', 40);
-    steam.scale.set(0.7, 0.18, 1);
+    const steam = makeLabel('steam', 46);
+    steam.scale.set(1.2, 0.30, 1);
     steam.material.opacity = 0.0;
-    steam.position.set(sgX, sgY + 0.55, sgZ);
+    steam.position.set(sgX, sgY + 0.58, sgZ);
     g.add(steam);
 
     // ── flow dots ──
