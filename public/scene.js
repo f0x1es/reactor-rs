@@ -283,7 +283,8 @@
       new THREE.SphereGeometry(vesselR * 0.95, 32, 16, 0, Math.PI * 2, Math.PI / 2, Math.PI / 2),
       domeMat.clone(),
     );
-    bot.position.y = -vesselH / 2;
+    // keep the bottom cap above the platform plane to avoid poking through the floor.
+    bot.position.y = -vesselH / 2 + 0.32;
     scene.add(bot);
 
     // flanges
