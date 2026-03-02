@@ -102,8 +102,15 @@
 
     const tex = new THREE.CanvasTexture(c);
     tex.anisotropy = 4;
-    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+    const mat = new THREE.SpriteMaterial({
+      map: tex,
+      transparent: true,
+      // labels should remain readable even through transparent containment
+      depthTest: false,
+      depthWrite: false,
+    });
     const spr = new THREE.Sprite(mat);
+    spr.renderOrder = 10;
     spr.scale.set(2.4, 0.6, 1);
     return spr;
   }
@@ -348,6 +355,8 @@
   const contMat = new THREE.MeshStandardMaterial({
     color: COLORS.containment, roughness: 0.6, metalness: 0.1,
     transparent: true, opacity: 0.06, side: THREE.DoubleSide,
+    // without this, the transparent dome still writes depth and hides labels when camera goes outside.
+    depthWrite: false,
   });
 
   function buildContainment() {
@@ -360,7 +369,11 @@
 
     const ring = new THREE.Mesh(
       new THREE.TorusGeometry(DIMS.containmentR, 0.02, 12, 64),
-      new THREE.MeshStandardMaterial({ color: 0x3355aa, roughness: 0.5, metalness: 0.3, transparent: true, opacity: 0.25 }),
+      new THREE.MeshStandardMaterial({
+        color: 0x3355aa, roughness: 0.5, metalness: 0.3,
+        transparent: true, opacity: 0.25,
+        depthWrite: false,
+      }),
     );
     ring.position.y = -0.8;
     ring.rotation.x = Math.PI / 2;
