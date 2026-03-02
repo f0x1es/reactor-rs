@@ -113,9 +113,8 @@ body.temp-high .topbar {
   inset: 0;
   z-index: -2;
   background: url("/assets/voronezh.gif") center / cover no-repeat;
-  filter: blur(4px) saturate(0.8) brightness(0.7);
+  filter: blur(4px) saturate(0.8) brightness(1.7);
   transform: none;
-  opacity: 0.5;
   pointer-events: none;
 }
 
