@@ -57,6 +57,28 @@ body {
   font-family: var(--font-mono);
   overflow: hidden;
   font-size: var(--text-sm);
+  transition: background 180ms linear, filter 180ms linear;
+}
+
+@keyframes heat-flicker {
+  0% { filter: saturate(1.00) brightness(1.00); }
+  50% { filter: saturate(1.18) brightness(1.06); }
+  100% { filter: saturate(1.00) brightness(1.00); }
+}
+
+body.temp-high {
+  background:
+    radial-gradient(1200px 700px at 18% -10%, rgba(255, 102, 0, 0.35), transparent 55%),
+    radial-gradient(900px 500px at 100% 0%, rgba(255, 0, 0, 0.28), transparent 55%),
+    radial-gradient(900px 650px at 80% 120%, rgba(255, 196, 0, 0.24), transparent 60%),
+    linear-gradient(180deg, #130807, #1c0a08);
+  animation: heat-flicker 0.65s ease-in-out infinite;
+}
+
+body.temp-high .panel,
+body.temp-high .topbar {
+  border-color: rgba(255, 88, 46, 0.85);
+  box-shadow: 0 0 20px rgba(255, 88, 46, 0.22), 0 12px 30px rgba(0, 0, 0, 0.45);
 }
 
 /* =========================================

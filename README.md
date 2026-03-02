@@ -36,3 +36,8 @@ server listens on `0.0.0.0:8080`.
 
 - denies `target_power_pct > 80`
 - alarms: `temp_high` if any zone temp >= 120c, `scram_active` when scram mode
+
+## ui notes
+
+- when `temp_high` is active, ui enters a fire theme (`body.temp-high`)
+- zone labels are meme names (`voronezh`, `zhopa`, `muhosransk`, `zalupinsk`, `kukuevo`)

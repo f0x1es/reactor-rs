@@ -97,4 +97,17 @@
   }
   pollHistory();
   setInterval(pollHistory, 1000);
+
+  // fire theme: when temp_high alarm is active the whole ui goes into burn mode.
+  async function pollHeatTheme(){
+    try {
+      const r = await fetch('/status');
+      if (!r.ok) return;
+      const st = await r.json();
+      const hot = Array.isArray(st.alarms) && st.alarms.includes('temp_high');
+      document.body.classList.toggle('temp-high', hot);
+    } catch (e) {}
+  }
+  pollHeatTheme();
+  setInterval(pollHeatTheme, 1000);
 })();

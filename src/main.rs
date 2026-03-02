@@ -26,7 +26,7 @@ async fn main() -> anyhow::Result<()> {
         .init();
 
     let zones = 5;
-    let zone_names: [&'static str; 5] = ["voronezh", "zone_1", "zone_2", "zone_3", "zone_4"];
+    let zone_names: [&'static str; 5] = ["voronezh", "zhopa", "muhosransk", "zalupinsk", "kukuevo"];
 
     // wire: http -> safety -> core
     let (safety_tx, safety_rx) = mpsc::channel::<SafetyRequest>(256);
