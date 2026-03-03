@@ -41,3 +41,9 @@ server listens on `0.0.0.0:8080`.
 
 - when `temp_high` is active, ui enters a fire theme (`body.temp-high`)
 - zone labels are meme names (`voronezh`, `zhopa`, `muhosransk`, `zalupinsk`, `kukuevo`)
+
+## secondary loop notes
+
+- nominal thermal power is 3600 mw (`src/sim.rs` `NOMINAL_POWER_MW`)
+- generator output scales with condenser vacuum; vacuum is improved by an always-on steam-jet ejector model (with a small steam bleed penalty)
+- 3d secondary view includes spray ponds + condenser ejector visuals (`public/scene.js`)
