@@ -5,7 +5,7 @@ use crate::utils::prng_noise;
 
 // ── constants ──────────────────────────────────────────────────────
 
-const NOMINAL_POWER_MW: f64 = 3000.0;
+const NOMINAL_POWER_MW: f64 = 3600.0;
 const MAX_RAMP_PCT_PER_TICK: f64 = 3.0;
 const HISTORY_CAP: usize = 300;
 
@@ -526,7 +526,7 @@ impl ReactorState {
             .clamp(0.0, 1.0);
 
         // degrade mode: efficiency scales with vacuum; no hard trip.
-        self.power_el_mw = q_sg * 0.33 * vac_n;
+        self.power_el_mw = q_sg * 0.40 * vac_n;
     }
 
     fn step_charging_letdown(&mut self) {
