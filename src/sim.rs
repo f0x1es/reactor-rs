@@ -80,6 +80,7 @@ pub struct ReactorState {
     steam_flow_kg_s: f64,
     secondary_feed_temp_c: f64,
     secondary_steam_temp_c: f64,
+    cond_vac_kpa_abs: f64,
 
     // kip noise seeds (dual channels)
     kip_seed_a: u32,
@@ -138,6 +139,7 @@ impl ReactorState {
             steam_flow_kg_s: 0.0,
             secondary_feed_temp_c: 220.0,
             secondary_steam_temp_c: 260.0,
+            cond_vac_kpa_abs: 8.0,
 
             kip_seed_a: 0x12345678,
             kip_seed_b: 0x87654321,
@@ -355,6 +357,7 @@ impl ReactorState {
             steam_flow_kg_s: self.steam_flow_kg_s.round() as i32,
             secondary_feed_temp_c: self.secondary_feed_temp_c.round() as i32,
             secondary_steam_temp_c: self.secondary_steam_temp_c.round() as i32,
+            cond_vac_kpa_abs: self.cond_vac_kpa_abs.round() as i32,
             kip_a_primary_t_hot_c: kip_a.t_hot,
             kip_a_primary_t_cold_c: kip_a.t_cold,
             kip_a_primary_flow_kg_s: kip_a.flow,
@@ -456,15 +459,28 @@ impl ReactorState {
         // secondary side
         let latent = 2_200_000.0_f64;
         self.steam_flow_kg_s = (q_sg * 1_000_000.0) / latent;
-        self.power_el_mw = q_sg * 0.33;
 
-        // steam temp
+        // steam temp (toy)
         self.secondary_steam_temp_c =
             (self.secondary_steam_temp_c + (q_sg / 40.0)).clamp(80.0, 340.0);
         let cond =
             CONDENSER_K * (0.5 + (self.steam_flow_kg_s / 2000.0).clamp(0.0, 1.5));
         self.secondary_steam_temp_c +=
             (ENV_TEMP_C - self.secondary_steam_temp_c) * cond;
+
+        // condenser vacuum (absolute pressure, kpa). worse vacuum -> less generator output.
+        let vac_base = 8.0;
+        let vac_bad = 45.0;
+        let flow_n = (self.steam_flow_kg_s / 2000.0).clamp(0.0, 2.5);
+        let target_vac = (vac_base + flow_n * 18.0).clamp(4.0, 101.0);
+        self.cond_vac_kpa_abs += (target_vac - self.cond_vac_kpa_abs) * 0.08;
+        self.cond_vac_kpa_abs = self.cond_vac_kpa_abs.clamp(4.0, 101.0);
+
+        let vac_n = (1.0 - ((self.cond_vac_kpa_abs - vac_base) / (vac_bad - vac_base)))
+            .clamp(0.0, 1.0);
+
+        // degrade mode: efficiency scales with vacuum; no hard trip.
+        self.power_el_mw = q_sg * 0.33 * vac_n;
     }
 
     fn step_charging_letdown(&mut self) {

@@ -76,6 +76,7 @@ pub struct Status {
     pub steam_flow_kg_s: i32,
     pub secondary_feed_temp_c: i32,
     pub secondary_steam_temp_c: i32,
+    pub cond_vac_kpa_abs: i32,
 
     // kip (elemer) - dual channels a/b with independent noise
     pub kip_a_primary_t_hot_c: i32,
