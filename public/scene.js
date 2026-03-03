@@ -568,6 +568,7 @@
     curves: [],
     dots: [],
     turbine: null,
+    fwPumps: [],
   };
 
   function buildSecondary(loopObjs) {
@@ -647,14 +648,93 @@
     feedHeader.castShadow = true;
     addSecondary(feedHeader);
 
-    // condenser -> feed header
-    const condToFeed = new THREE.CatmullRomCurve3([
-      new THREE.Vector3(3.00, -0.55, 0.0),
-      new THREE.Vector3(2.70, -0.25, 0.0),
+    // condenser -> deaerator -> feedwater pumps (x3) -> feed header
+    const deaMat = new THREE.MeshStandardMaterial({ color: 0x7b8794, roughness: 0.45, metalness: 0.35 });
+
+    const dea = new THREE.Mesh(new THREE.CylinderGeometry(0.20, 0.20, 0.78, 22), deaMat);
+    dea.position.set(2.72, -0.55, 0.55);
+    dea.rotation.z = Math.PI / 2;
+    dea.castShadow = true;
+    addSecondary(dea);
+
+    const deaLabel = makeLabel('deaer', 40);
+    deaLabel.scale.set(0.9, 0.24, 1);
+    deaLabel.material.opacity = 0.75;
+    deaLabel.position.set(2.72, -0.20, 0.55);
+    addSecondary(deaLabel);
+
+    const condOut = new THREE.Vector3(3.00, -0.55, 0.0);
+    const deaIn = new THREE.Vector3(3.11, -0.55, 0.55);
+    const deaOut = new THREE.Vector3(2.33, -0.55, 0.55);
+
+    const condToDea = new THREE.CatmullRomCurve3([
+      condOut,
+      new THREE.Vector3(2.95, -0.55, 0.25),
+      deaIn,
+    ]);
+    secondary.curves.push({ curve: condToDea, kind: 'feed' });
+    addSecondary(makeTube(condToDea, feedMat, 0.016));
+
+    const suction = new THREE.Vector3(2.20, -0.55, 0.0);
+    const deaToSuction = new THREE.CatmullRomCurve3([
+      deaOut,
+      new THREE.Vector3(2.38, -0.55, 0.30),
+      suction,
+    ]);
+    secondary.curves.push({ curve: deaToSuction, kind: 'feed' });
+    addSecondary(makeTube(deaToSuction, feedMat, 0.014));
+
+    const pumpMat = new THREE.MeshStandardMaterial({ color: 0x9aa7b6, roughness: 0.38, metalness: 0.55 });
+    const impMat = new THREE.MeshStandardMaterial({ color: 0xffe600, roughness: 0.30, metalness: 0.10 });
+
+    const pumpXs = 2.05;
+    const pumpY = -0.58;
+    const pumpZs = [-0.55, 0.0, 0.55];
+
+    const discharge = new THREE.Vector3(2.55, -0.28, 0.0);
+
+    for (let pi = 0; pi < 3; pi++) {
+      const z = pumpZs[pi];
+
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.10, 0.10, 0.30, 18), pumpMat);
+      body.position.set(pumpXs, pumpY, z);
+      body.rotation.z = Math.PI / 2;
+      body.castShadow = true;
+      addSecondary(body);
+
+      const imp = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.02, 12), impMat);
+      imp.position.set(pumpXs - 0.10, pumpY, z);
+      imp.rotation.z = Math.PI / 2;
+      imp.castShadow = true;
+      addSecondary(imp);
+      secondary.fwPumps.push(imp);
+
+      const sIn = new THREE.Vector3(pumpXs + 0.18, pumpY, z);
+      const sCurve = new THREE.CatmullRomCurve3([
+        suction,
+        new THREE.Vector3(2.16, pumpY, z),
+        sIn,
+      ]);
+      secondary.curves.push({ curve: sCurve, kind: 'feed' });
+      addSecondary(makeTube(sCurve, feedMat, 0.010));
+
+      const sOut = new THREE.Vector3(pumpXs - 0.22, pumpY, z);
+      const dCurve = new THREE.CatmullRomCurve3([
+        sOut,
+        new THREE.Vector3(2.00, -0.34, z),
+        discharge,
+      ]);
+      secondary.curves.push({ curve: dCurve, kind: 'feed' });
+      addSecondary(makeTube(dCurve, feedMat, 0.010));
+    }
+
+    const toHeader = new THREE.CatmullRomCurve3([
+      discharge,
+      new THREE.Vector3(2.45, -0.18, 0.0),
       new THREE.Vector3(feedHeaderR, feedHeaderY, 0.0),
     ]);
-    secondary.curves.push({ curve: condToFeed, kind: 'feed' });
-    addSecondary(makeTube(condToFeed, feedMat, 0.016));
+    secondary.curves.push({ curve: toHeader, kind: 'feed' });
+    addSecondary(makeTube(toHeader, feedMat, 0.016));
 
     // connect each SG to steam header + feed header
     for (const L of loopObjs) {
@@ -933,6 +1013,11 @@
 
     // turbine spin hint (decorative)
     if (secondary.turbine) secondary.turbine.rotation.x += dt * (0.4 + steamN * 5.0);
+
+    // feedwater pumps spin (decorative)
+    for (const p of secondary.fwPumps) {
+      p.rotation.x += dt * (0.6 + steamN * 6.0);
+    }
 
     // caravans orbit
     for (const cv of caravanMeshes) {
