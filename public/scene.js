@@ -116,6 +116,56 @@
     return spr;
   }
 
+  function makeBoard(text, fontSize) {
+    const c = document.createElement('canvas');
+    c.width = 768; c.height = 192;
+    const ctx = c.getContext('2d');
+
+    const tex = new THREE.CanvasTexture(c);
+    tex.anisotropy = 4;
+
+    const mat = new THREE.SpriteMaterial({
+      map: tex,
+      transparent: true,
+      depthTest: false,
+      depthWrite: false,
+    });
+
+    const spr = new THREE.Sprite(mat);
+    spr.renderOrder = 11;
+    spr.scale.set(2.2, 0.55, 1);
+
+    function draw(t) {
+      const fs = fontSize || 56;
+      ctx.clearRect(0, 0, c.width, c.height);
+
+      // display background
+      ctx.fillStyle = 'rgba(4, 6, 10, 0.72)';
+      ctx.fillRect(18, 40, c.width - 36, c.height - 80);
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+      ctx.lineWidth = 6;
+      ctx.strokeRect(18, 40, c.width - 36, c.height - 80);
+
+      ctx.font = '900 ' + fs + 'px ui-monospace, monospace';
+      ctx.textBaseline = 'alphabetic';
+
+      ctx.fillStyle = '#e6edf3';
+      ctx.shadowColor = 'rgba(255, 230, 0, 0.55)';
+      ctx.shadowBlur = 18;
+
+      const m = ctx.measureText(t);
+      const x = Math.max(36, (c.width - m.width) / 2);
+      const y = Math.round(c.height * 0.64);
+      ctx.fillText(t, x, y);
+
+      tex.needsUpdate = true;
+    }
+
+    draw(text || 'p_el: 0 mw');
+
+    return { spr, setText: draw };
+  }
+
   // ── renderer ───────────────────────────────────────────────────
 
   let renderer;
@@ -569,6 +619,7 @@
     dots: [],
     turbine: null,
     fwPumps: [],
+    pBoard: null,
   };
 
   function buildSecondary(loopObjs) {
@@ -603,6 +654,25 @@
     turbLabel.material.opacity = 0.85;
     turbLabel.position.set(3.55, 0.68, 0.0);
     addSecondary(turbLabel);
+
+    // generator block (visual only)
+    const genMat = new THREE.MeshStandardMaterial({ color: 0x93a3b5, roughness: 0.35, metalness: 0.55 });
+    const generator = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.62, 24), genMat);
+    generator.position.set(4.35, 0.22, 0.0);
+    generator.rotation.z = Math.PI / 2;
+    generator.castShadow = true;
+    addSecondary(generator);
+
+    const genLabel = makeLabel('gen', 44);
+    genLabel.scale.set(0.9, 0.24, 1);
+    genLabel.material.opacity = 0.75;
+    genLabel.position.set(4.35, 0.62, 0.0);
+    addSecondary(genLabel);
+
+    const pBoard = makeBoard('p_el: 0 mw', 56);
+    pBoard.spr.position.set(4.35, 0.92, 0.0);
+    addSecondary(pBoard.spr);
+    secondary.pBoard = pBoard;
 
     // condenser block
     const condMat = new THREE.MeshStandardMaterial({ color: 0x6b7280, roughness: 0.55, metalness: 0.25 });
@@ -856,6 +926,7 @@
     rodPct: 0,
     flow: 0,
     steamFlow: 0,
+    pElMw: 0,
     sn: [true, true, true],
     alarms: '',
     impactShakeUntil: 0,
@@ -873,7 +944,12 @@
       reactorState.rodPct = st.control_rod_pct || 0;
       reactorState.flow = st.primary_flow_kg_s || 0;
       reactorState.steamFlow = st.steam_flow_kg_s || 0;
+      reactorState.pElMw = (typeof st.power_el_mw === 'number') ? st.power_el_mw : 0;
       reactorState.sn = [!!st.sn_a_on, !!st.sn_b_on, !!st.sn_c_on];
+
+      if (secondary.pBoard) {
+        secondary.pBoard.setText('p_el: ' + Math.round(reactorState.pElMw) + ' mw');
+      }
 
       // vessel emissive from temperature
       const c = tempColor(tempC);
