@@ -620,6 +620,7 @@
     turbine: null,
     fwPumps: [],
     fwValves: [],
+    sprayJets: [],
     pBoard: null,
   };
 
@@ -687,6 +688,85 @@
     condLabel.material.opacity = 0.75;
     condLabel.position.set(3.55, -0.08, 0.0);
     addSecondary(condLabel);
+
+    // spray ponds (closed cooling loop, visual only)
+    const pondX = 5.35;
+    const pondY = -1.10;
+    const pondZ = 0.00;
+
+    const pondMat = new THREE.MeshStandardMaterial({ color: 0x1f2937, roughness: 0.85, metalness: 0.05 });
+    const waterMat = new THREE.MeshStandardMaterial({
+      color: 0x0ea5e9,
+      roughness: 0.25,
+      metalness: 0.05,
+      transparent: true,
+      opacity: 0.35,
+    });
+    const cwMat = new THREE.MeshStandardMaterial({ color: 0x2dd4bf, roughness: 0.45, metalness: 0.20 });
+
+    const pond = new THREE.Mesh(new THREE.BoxGeometry(1.90, 0.18, 1.10), pondMat);
+    pond.position.set(pondX, pondY, pondZ);
+    pond.castShadow = true;
+    addSecondary(pond);
+
+    const water = new THREE.Mesh(new THREE.PlaneGeometry(1.82, 1.02, 1, 1), waterMat);
+    water.position.set(pondX, pondY + 0.10, pondZ);
+    water.rotation.x = -Math.PI / 2;
+    addSecondary(water);
+
+    // cooling pipes: condenser <-> pond (closed loop)
+    const toPond = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(4.10, -0.55, 0.18),
+      new THREE.Vector3(4.55, -0.85, 0.40),
+      new THREE.Vector3(pondX - 0.85, pondY - 0.05, 0.40),
+      new THREE.Vector3(pondX - 0.78, pondY - 0.05, 0.20),
+    ]);
+    addSecondary(makeTube(toPond, cwMat, 0.014));
+
+    const fromPond = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(pondX - 0.78, pondY - 0.05, -0.20),
+      new THREE.Vector3(pondX - 0.85, pondY - 0.05, -0.40),
+      new THREE.Vector3(4.55, -0.85, -0.40),
+      new THREE.Vector3(4.10, -0.55, -0.18),
+    ]);
+    addSecondary(makeTube(fromPond, cwMat, 0.014));
+
+    // a lot of fountain nozzles
+    const nozMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.65, metalness: 0.15 });
+    const nozGeo = new THREE.CylinderGeometry(0.012, 0.012, 0.03, 10);
+
+    const jetGeo = new THREE.CylinderGeometry(0.010, 0.006, 1.0, 10);
+    const jetMat = new THREE.MeshStandardMaterial({
+      color: 0x39d2ff,
+      roughness: 0.10,
+      metalness: 0.00,
+      transparent: true,
+      opacity: 0.50,
+    });
+
+    const nx = 8;
+    const nz = 5;
+    for (let ix = 0; ix < nx; ix++) {
+      for (let iz = 0; iz < nz; iz++) {
+        const fx = (ix + 0.5) / nx;
+        const fz = (iz + 0.5) / nz;
+        const x = pondX + (fx - 0.5) * 1.60;
+        const z = pondZ + (fz - 0.5) * 0.84;
+        const y = pondY + 0.10;
+
+        const n = new THREE.Mesh(nozGeo, nozMat);
+        n.position.set(x, y - 0.02, z);
+        n.castShadow = true;
+        addSecondary(n);
+
+        const j = new THREE.Mesh(jetGeo, jetMat);
+        j.position.set(x, y + 0.05, z);
+        j.scale.y = 0.08;
+        addSecondary(j);
+
+        secondary.sprayJets.push({ mesh: j, baseY: y + 0.05, phase: (ix * 17 + iz * 29) * 0.17 });
+      }
+    }
 
     // main steam line: header -> turbine
     const steamMainCurve = new THREE.CatmullRomCurve3([
@@ -1181,6 +1261,16 @@
 
     // turbine spin hint (decorative)
     if (secondary.turbine) secondary.turbine.rotation.x += dt * (0.4 + steamN * 5.0);
+
+    // spray ponds fountains (decorative)
+    for (const j of secondary.sprayJets) {
+      const amp = 0.08 + steamN * 0.65;
+      const wobble = 0.85 + 0.15 * Math.sin(t * 2.2 + j.phase);
+      const h = amp * wobble;
+      j.mesh.scale.y = h;
+      j.mesh.position.y = j.baseY + (h * 0.50);
+      j.mesh.material.opacity = 0.18 + steamN * 0.55;
+    }
 
     function fwIdx(id) {
       return (id === 'b') ? 1 : (id === 'c') ? 2 : 0;
