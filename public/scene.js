@@ -618,6 +618,7 @@
     curves: [],
     dots: [],
     turbine: null,
+    ejectorJet: null,
     fwPumps: [],
     fwValves: [],
     sprayJets: [],
@@ -688,6 +689,45 @@
     condLabel.material.opacity = 0.75;
     condLabel.position.set(3.55, -0.08, 0.0);
     addSecondary(condLabel);
+
+    // steam-jet ejector (always on; decorative)
+    const ejX = 4.05;
+    const ejY = -0.34;
+    const ejZ = 0.42;
+
+    const ejMat = new THREE.MeshStandardMaterial({ color: 0x9aa7b6, roughness: 0.35, metalness: 0.55 });
+    const ejBody = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.22, 16), ejMat);
+    ejBody.position.set(ejX, ejY, ejZ);
+    ejBody.rotation.z = Math.PI / 2;
+    ejBody.castShadow = true;
+    addSecondary(ejBody);
+
+    const ejLabel = makeLabel('ej', 34);
+    ejLabel.scale.set(0.55, 0.18, 1);
+    ejLabel.material.opacity = 0.70;
+    ejLabel.position.set(ejX, ejY + 0.20, ejZ);
+    addSecondary(ejLabel);
+
+    const ejPipe = new THREE.CatmullRomCurve3([
+      new THREE.Vector3(4.12, -0.34, 0.05),
+      new THREE.Vector3(4.18, -0.34, 0.28),
+      new THREE.Vector3(ejX - 0.10, ejY, ejZ),
+      new THREE.Vector3(ejX + 0.10, ejY, ejZ),
+    ]);
+    addSecondary(makeTube(ejPipe, steamMat, 0.010));
+
+    const ejJetMat = new THREE.MeshStandardMaterial({
+      color: 0xe2e8f0,
+      roughness: 0.10,
+      metalness: 0.00,
+      transparent: true,
+      opacity: 0.0,
+    });
+    const ejJet = new THREE.Mesh(new THREE.ConeGeometry(0.05, 0.50, 14), ejJetMat);
+    ejJet.position.set(ejX, ejY + 0.34, ejZ);
+    ejJet.scale.y = 0.01;
+    addSecondary(ejJet);
+    secondary.ejectorJet = { mesh: ejJet, baseY: ejY + 0.34, phase: 1.7 };
 
     // spray ponds (closed cooling loop, visual only)
     const pondX = 5.35;
@@ -1270,6 +1310,18 @@
       j.mesh.scale.y = h;
       j.mesh.position.y = j.baseY + (h * 0.50);
       j.mesh.material.opacity = 0.18 + steamN * 0.55;
+    }
+
+    // condenser ejector jet (decorative)
+    if (secondary.ejectorJet) {
+      const j = secondary.ejectorJet;
+      const on = steamN > 0.02;
+      const amp = 0.02 + steamN * 0.65;
+      const wobble = 0.90 + 0.10 * Math.sin(t * 3.5 + j.phase);
+      const h = amp * wobble;
+      j.mesh.scale.y = on ? h : 0.01;
+      j.mesh.position.y = j.baseY + (h * 0.25);
+      j.mesh.material.opacity = on ? (0.08 + steamN * 0.50) : 0.0;
     }
 
     function fwIdx(id) {
