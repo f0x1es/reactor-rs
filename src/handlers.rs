@@ -196,11 +196,12 @@ pub async fn ui_audit(
     for e in guard.log.iter().rev().take(24) {
         out.push_str(&format!(
             "<div class=\"audit-log__line\">\
-               <span class=\"audit-log__ts\">{}</span> \
+               <span class=\"audit-log__ts\" data-ts=\"{}\">{}</span> \
                <span class=\"audit-log__cs\">{}</span> \
                <span class=\"audit-log__ac\">{}</span> \
                <span class=\"audit-log__pa\">{}</span>\
              </div>",
+            e.ts_s,
             e.ts_s,
             html_escape(&e.callsign),
             html_escape(&e.action),

@@ -151,4 +151,29 @@
   setTimeout(() => {
     if (Date.now() - lastStatusEventAt > 1500) startFallbackPoll();
   }, 1700);
+
+  // audit: render unix seconds to local hh:mm:ss in the ui.
+  function pad2(n){
+    return (n < 10 ? '0' : '') + n;
+  }
+
+  function formatAuditTs(root){
+    const scope = root || document;
+    if (!scope.querySelectorAll) return;
+    const els = scope.querySelectorAll('.audit-log__ts[data-ts]');
+    for (const el of els) {
+      const ts = parseInt(el.getAttribute('data-ts') || '', 10);
+      if (!Number.isFinite(ts)) continue;
+      const d = new Date(ts * 1000);
+      const s = pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+      if (el.textContent !== s) el.textContent = s;
+      el.title = d.toLocaleString();
+    }
+  }
+
+  formatAuditTs(document);
+  document.body.addEventListener('htmx:afterSwap', (ev) => {
+    const t = ev && ev.detail && ev.detail.target;
+    if (t && t.id === 'audit') formatAuditTs(t);
+  });
 })();
