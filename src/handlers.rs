@@ -43,9 +43,41 @@ pub async fn ui_index(
     headers: HeaderMap,
 ) -> (HeaderMap, Html<String>) {
     let (hm, _id, _cs) = ensure_client_headers(&st, &headers).await;
-    let html = std::fs::read_to_string("public/index.html")
+    let mut html = std::fs::read_to_string("public/index.html")
         .unwrap_or_else(|_| "<h1>404 index.html not found</h1>".to_string());
+
+    // cache-bust local assets so normal reload picks up changes without ctrl+f5.
+    let v = asset_ver(&[
+        "public/style.css",
+        "public/app.js",
+        "public/scene.js",
+        "public/index.html",
+    ]);
+    if v != 0 {
+        let q = format!("?v={}", v);
+        html = html
+            .replace("/assets/style.css", &format!("/assets/style.css{}", q))
+            .replace("/assets/app.js", &format!("/assets/app.js{}", q))
+            .replace("/assets/scene.js", &format!("/assets/scene.js{}", q));
+    }
+
     (hm, Html(html))
+}
+
+fn asset_ver(paths: &[&str]) -> u64 {
+    use std::time::UNIX_EPOCH;
+
+    let mut max_s: u64 = 0;
+    for p in paths {
+        if let Ok(md) = std::fs::metadata(p) {
+            if let Ok(mt) = md.modified() {
+                if let Ok(d) = mt.duration_since(UNIX_EPOCH) {
+                    max_s = max_s.max(d.as_secs());
+                }
+            }
+        }
+    }
+    max_s
 }
 
 pub async fn ui_mode(State(st): State<AppState>) -> Result<Html<&'static str>, StatusCode> {

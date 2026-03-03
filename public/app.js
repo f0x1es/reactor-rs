@@ -100,9 +100,14 @@
 
   // fire theme: prefer scene.js status events; fallback to polling only when scene isn't active (e.g. webgl off).
   function applyHeatTheme(st){
-    const alarms = (st && Array.isArray(st.alarms)) ? st.alarms : [];
-    // fire theme only when really hot
-    const hot = alarms.includes('temp_xhigh');
+    // fire theme: high power only (keep it simple and visible)
+    const zones = (st && Array.isArray(st.zones)) ? st.zones : [];
+    let mx = 0;
+    for (const z of zones) {
+      const p = (z && typeof z.power_pct === 'number') ? z.power_pct : 0;
+      if (p > mx) mx = p;
+    }
+    const hot = mx >= 75;
     document.body.classList.toggle('temp-high', hot);
   }
 
