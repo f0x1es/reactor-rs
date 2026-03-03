@@ -762,6 +762,10 @@
     const valveGeo = new THREE.CylinderGeometry(0.035, 0.035, 0.06, 12);
     const valveHandleGeo = new THREE.BoxGeometry(0.07, 0.02, 0.02);
 
+    const gaugeBodyMat = new THREE.MeshStandardMaterial({ color: 0xcbd5e1, roughness: 0.35, metalness: 0.55 });
+    const gaugeDialMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.75, metalness: 0.05 });
+    const tcMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.35, metalness: 0.45 });
+
     function addValve(x, y, z, mat) {
       const v = new THREE.Mesh(valveGeo, mat);
       v.position.set(x, y, z);
@@ -773,6 +777,42 @@
       h.position.set(x, y + 0.06, z);
       h.castShadow = true;
       addSecondary(h);
+    }
+
+    function addGauge(x, y, z) {
+      const body = new THREE.Mesh(new THREE.CylinderGeometry(0.05, 0.05, 0.018, 16), gaugeBodyMat);
+      body.position.set(x, y + 0.10, z);
+      body.rotation.x = Math.PI / 2;
+      body.castShadow = true;
+      addSecondary(body);
+
+      const dial = new THREE.Mesh(new THREE.CircleGeometry(0.042, 16), gaugeDialMat);
+      dial.position.set(x, y + 0.10, z + 0.012);
+      dial.castShadow = false;
+      addSecondary(dial);
+
+      const needle = new THREE.Mesh(new THREE.BoxGeometry(0.034, 0.003, 0.002), checkValveMat);
+      needle.position.set(x, y + 0.10, z + 0.014);
+      needle.rotation.z = -0.9;
+      addSecondary(needle);
+
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.008, 0.008, 0.06, 12), gaugeBodyMat);
+      stem.position.set(x, y + 0.06, z);
+      stem.rotation.z = Math.PI / 2;
+      addSecondary(stem);
+    }
+
+    function addThermocouple(x, y, z) {
+      const probe = new THREE.Mesh(new THREE.CylinderGeometry(0.006, 0.006, 0.12, 12), tcMat);
+      probe.position.set(x, y + 0.02, z);
+      probe.rotation.z = Math.PI / 2;
+      probe.castShadow = true;
+      addSecondary(probe);
+
+      const head = new THREE.Mesh(new THREE.BoxGeometry(0.03, 0.018, 0.018), tcMat);
+      head.position.set(x, y + 0.045, z);
+      head.castShadow = true;
+      addSecondary(head);
     }
 
     const pumpXs = 2.05;
@@ -821,6 +861,10 @@
       // discharge isolation + check valve
       addValve(pumpXs - 0.30, pumpY, z, isoValveMat);
       addValve(pumpXs - 0.38, pumpY, z, checkValveMat);
+
+      // discharge instruments: pressure gauge + thermocouple
+      addGauge(pumpXs - 0.50, pumpY, z);
+      addThermocouple(pumpXs - 0.56, pumpY, z);
     }
 
     const toHeader = new THREE.CatmullRomCurve3([
