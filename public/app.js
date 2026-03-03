@@ -3,6 +3,54 @@
   let audio = null;
   let audioOn = false;
   const stateEl = document.getElementById('musicState');
+
+  // bipki: procedural beeps on critical alarms (opt-in).
+  let bipkiOn = (localStorage.getItem('reactor_bipki') || 'off') === 'on';
+  let beepCtx = null;
+  let lastCritical = new Set();
+  const bipkiStateEl = document.getElementById('bipkiState');
+
+  function setBipkiState(on){
+    bipkiOn = !!on;
+    localStorage.setItem('reactor_bipki', bipkiOn ? 'on' : 'off');
+    if (bipkiStateEl) bipkiStateEl.textContent = bipkiOn ? 'on' : 'off';
+  }
+
+  function ensureBeepCtx(){
+    if (beepCtx) return beepCtx;
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if (!AC) return null;
+    beepCtx = new AC();
+    return beepCtx;
+  }
+
+  function beep(freq, ms){
+    const ctx = ensureBeepCtx();
+    if (!ctx) return;
+    const t0 = ctx.currentTime;
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'square';
+    o.frequency.value = freq || 880;
+    g.gain.setValueAtTime(0.0001, t0);
+    g.gain.exponentialRampToValueAtTime(0.12, t0 + 0.01);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + (ms||90)/1000.0);
+    o.connect(g);
+    g.connect(ctx.destination);
+    o.start(t0);
+    o.stop(t0 + (ms||90)/1000.0 + 0.02);
+  }
+
+  const bipkiBtn = document.getElementById('bipkiBtn');
+  if (bipkiBtn) {
+    // init from storage
+    setBipkiState(bipkiOn);
+    bipkiBtn.addEventListener('click', ()=>{
+      setBipkiState(!bipkiOn);
+      if (bipkiOn) ensureBeepCtx();
+    });
+    bipkiBtn.addEventListener('keydown', (e)=>{ if (e.key==='Enter' || e.key===' ') { setBipkiState(!bipkiOn); if (bipkiOn) ensureBeepCtx(); } });
+  }
   
   function setAudioState(on){
     audioOn = on;
@@ -98,10 +146,40 @@
   pollHistory();
   setInterval(pollHistory, 1000);
 
-  // fire theme: prefer scene.js status events; fallback to polling only when scene isn't active (e.g. webgl off).
-  function applyHeatTheme(st){
-    const hot = !!(st && Array.isArray(st.alarms) && st.alarms.includes('temp_high'));
+  const pizdecEl = document.getElementById('pizdecBanner');
+
+  // fire theme + unsafe overlays: prefer scene.js status events; fallback to polling only when scene isn't active (e.g. webgl off).
+  function applyStatus(st){
+    const alarms = (st && Array.isArray(st.alarms)) ? st.alarms : [];
+
+    const hot = alarms.includes('temp_high');
     document.body.classList.toggle('temp-high', hot);
+
+    // pizdec banner: unsafe + >=95% target on any zone
+    let pizdec = false;
+    if (st && st.unsafe_mode && Array.isArray(st.zones)) {
+      let mx = 0;
+      for (const z of st.zones) mx = Math.max(mx, (z && z.target_power_pct) ? z.target_power_pct : 0);
+      pizdec = mx >= 95 || alarms.includes('pizdec') || alarms.includes('meltdown');
+    }
+    if (pizdecEl) pizdecEl.hidden = !pizdec;
+
+    // bipki: beep when a new critical alarm appears
+    const criticalList = ['pipe_rupture','containment_hit','power_lost','temp_high','scram_active','meltdown'];
+    const cur = new Set();
+    for (const a of alarms) if (criticalList.includes(a)) cur.add(a);
+
+    if (bipkiOn) {
+      for (const a of cur) {
+        if (!lastCritical.has(a)) {
+          // quick double-beep
+          beep(880, 75);
+          setTimeout(()=>beep(660, 85), 110);
+          break;
+        }
+      }
+    }
+    lastCritical = cur;
   }
 
   let lastStatusEventAt = 0;
@@ -112,7 +190,7 @@
       const r = await fetch('/status');
       if (!r.ok) return;
       const st = await r.json();
-      applyHeatTheme(st);
+      applyStatus(st);
     } catch (e) {}
   }
 
@@ -137,7 +215,7 @@
 
   if (window.__reactorStatus) {
     lastStatusEventAt = Date.now();
-    applyHeatTheme(window.__reactorStatus);
+    applyStatus(window.__reactorStatus);
   }
 
   // if no scene status events arrived quickly, enable fallback polling.

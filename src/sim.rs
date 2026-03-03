@@ -89,6 +89,7 @@ pub struct ReactorState {
     auto_enabled: bool,
     auto_setpoint_power_pct: u8,
     control_rod_pct: u8,
+    unsafe_mode: bool,
 
     // power supply
     grid_power_on: bool,
@@ -145,6 +146,7 @@ impl ReactorState {
             auto_enabled: false,
             auto_setpoint_power_pct: 50,
             control_rod_pct: 0,
+            unsafe_mode: false,
 
             grid_power_on: true,
             sn_on: [true; NUM_SECTIONS],
@@ -198,6 +200,21 @@ impl ReactorState {
     pub fn set_rod(&mut self, pct: u8) {
         self.control_rod_pct = pct.min(100);
         self.last_event = format!("rod: {}%", self.control_rod_pct);
+    }
+
+    pub fn set_unsafe_mode(&mut self, enabled: bool) {
+        self.unsafe_mode = enabled;
+        if !enabled {
+            // clamp any existing targets back to the safe limit
+            for t in &mut self.target_power {
+                *t = (*t).min(80);
+            }
+        }
+        self.last_event = if enabled {
+            "unsafe mode: on".into()
+        } else {
+            "unsafe mode: off".into()
+        };
     }
 
     pub fn set_charging(&mut self, kg_s: u32) {
@@ -343,8 +360,9 @@ impl ReactorState {
             caravans: self.caravans.iter().map(Caravan::to_status).collect(),
             last_event: self.last_event.clone(),
             auto_enabled: self.auto_enabled,
+            unsafe_mode: self.unsafe_mode,
             auto_setpoint_power_pct: self.auto_setpoint_power_pct,
-            temp_limit_c: TEMP_LIMIT_C,
+            temp_limit_c: if self.unsafe_mode { TEMP_LIMIT_C + 60 } else { TEMP_LIMIT_C },
             control_rod_pct: self.control_rod_pct,
             power_th_mw: self.power_th_mw.round() as i32,
             power_el_mw: self.power_el_mw.round() as i32,
@@ -649,8 +667,17 @@ impl ReactorState {
         let mut alarms = Vec::new();
 
         let max_temp = zones.iter().map(|z| z.temp_c).max().unwrap_or(0);
-        if max_temp >= TEMP_LIMIT_C {
+        let temp_limit = if self.unsafe_mode { TEMP_LIMIT_C + 60 } else { TEMP_LIMIT_C };
+        if max_temp >= temp_limit {
             alarms.push("temp_high".into());
+        }
+        if self.unsafe_mode {
+            if self.primary_t_hot_c.round() as i32 >= TEMP_LIMIT_C + 70 {
+                alarms.push("pizdec".into());
+            }
+            if self.primary_t_hot_c.round() as i32 >= TEMP_LIMIT_C + 110 {
+                alarms.push("meltdown".into());
+            }
         }
 
         if zones.iter().any(|z| z.name == "voronezh" && z.power_pct > 69) {

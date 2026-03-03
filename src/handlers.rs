@@ -215,6 +215,41 @@ pub async fn ui_set_power(
     a.ok("accepted")
 }
 
+pub async fn ui_unsafe(
+    State(st): State<AppState>,
+    headers: HeaderMap,
+    Form(req): Form<UnsafeForm>,
+) -> Result<(HeaderMap, Html<&'static str>), StatusCode> {
+    let enabled = req.enabled.unwrap_or(0) == 1;
+
+    if enabled && req.confirm.unwrap_or(0) != 1 {
+        return Audited::new(&st, &headers, "unsafe", "enabled=1 confirm=0")
+            .await
+            .ok("confirm required");
+    }
+
+    let a = Audited::new(
+        &st,
+        &headers,
+        "unsafe",
+        &format!("enabled={}", if enabled { 1 } else { 0 }),
+    )
+    .await;
+
+    st.safety_tx
+        .send(SafetyRequest::SetUnsafeMode { enabled })
+        .await
+        .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+
+    a.ok("accepted")
+}
+
+#[derive(Debug, Deserialize)]
+pub struct UnsafeForm {
+    enabled: Option<u8>,
+    confirm: Option<u8>,
+}
+
 pub async fn ui_scram(
     State(st): State<AppState>,
     headers: HeaderMap,

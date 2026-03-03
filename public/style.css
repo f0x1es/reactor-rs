@@ -503,3 +503,20 @@ body.temp-high .topbar {
   .control-grid { grid-template-columns: 1fr; }
   .view-3d { min-height: 300px; }
 }
+
+
+.pizdec-banner {
+  position: fixed;
+  top: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2000;
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: rgba(239, 68, 68, 0.92);
+  color: #0b0f14;
+  font-family: var(--font-mono);
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  box-shadow: 0 10px 30px rgba(0,0,0,.45);
+}
