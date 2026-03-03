@@ -810,7 +810,7 @@
       dial.castShadow = false;
       addSecondary(dial);
 
-      const needle = new THREE.Mesh(new THREE.BoxGeometry(0.034, 0.003, 0.002), checkValveMat);
+      const needle = new THREE.Mesh(new THREE.BoxGeometry(0.034, 0.003, 0.002), checkValveBase);
       needle.position.set(x, y + 0.10, z + 0.014);
       needle.rotation.z = -0.9;
       addSecondary(needle);
