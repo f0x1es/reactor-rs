@@ -382,9 +382,11 @@
     addPrimary(ring);
   }
 
+  const commonObjs = [];
   const primaryObjs = [];
   const secondaryObjs = [];
 
+  function addCommon(obj) { scene.add(obj); commonObjs.push(obj); return obj; }
   function addPrimary(obj) { scene.add(obj); primaryObjs.push(obj); return obj; }
   function addSecondary(obj) { scene.add(obj); secondaryObjs.push(obj); return obj; }
 
@@ -583,7 +585,8 @@
     header.position.y = headerY;
     header.rotation.x = Math.PI / 2;
     header.castShadow = true;
-    addSecondary(header);
+    // keep steam header visible in both views
+    addCommon(header);
 
     // turbine block
     const turbMat = new THREE.MeshStandardMaterial({ color: 0x9aa7b6, roughness: 0.35, metalness: 0.55 });
@@ -666,7 +669,8 @@
         headerPoint,
       ]);
       secondary.curves.push({ curve: steamCurve, kind: 'steam' });
-      addSecondary(makeTube(steamCurve, steamMat, 0.014));
+      // keep SG steam lead-in to header visible in both views
+      addCommon(makeTube(steamCurve, steamMat, 0.014));
 
       const fx = Math.cos(a) * feedHeaderR;
       const fz = Math.sin(a) * feedHeaderR;
@@ -737,11 +741,9 @@
     viewMode = (mode === 'secondary') ? 'secondary' : 'primary';
     localStorage.setItem('reactor_3d_view', viewMode);
 
+    for (const o of commonObjs) o.visible = true;
     for (const o of primaryObjs) o.visible = (viewMode === 'primary');
     for (const o of secondaryObjs) o.visible = (viewMode === 'secondary');
-
-    // platform stays visible in both views
-    // (it is not tracked in primary/secondary lists)
 
     setBtnActive('view-primary', viewMode === 'primary');
     setBtnActive('view-secondary', viewMode === 'secondary');
