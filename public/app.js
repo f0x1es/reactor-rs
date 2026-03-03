@@ -152,8 +152,9 @@
   function applyStatus(st){
     const alarms = (st && Array.isArray(st.alarms)) ? st.alarms : [];
 
-    const hot = alarms.includes('temp_high');
-    document.body.classList.toggle('temp-high', hot);
+    // theme: unsafe -> always fire; normal -> normal (no fire)
+    const fire = !!(st && st.unsafe_mode);
+    document.body.classList.toggle('temp-high', fire);
 
     // pizdec banner: unsafe + >=95% target on any zone
     let pizdec = false;
@@ -164,12 +165,17 @@
     }
     if (pizdecEl) pizdecEl.hidden = !pizdec;
 
-    // bipki: beep when a new critical alarm appears
+    // bipki: in pizdec, force-on regardless of saved toggle
+    const effectiveBipki = bipkiOn || pizdec;
+    if (bipkiStateEl) bipkiStateEl.textContent = effectiveBipki ? 'on' : 'off';
+    if (effectiveBipki) ensureBeepCtx();
+
+    // beep when a new critical alarm appears
     const criticalList = ['pipe_rupture','containment_hit','power_lost','temp_high','scram_active','meltdown'];
     const cur = new Set();
     for (const a of alarms) if (criticalList.includes(a)) cur.add(a);
 
-    if (bipkiOn) {
+    if (effectiveBipki) {
       for (const a of cur) {
         if (!lastCritical.has(a)) {
           // quick double-beep
