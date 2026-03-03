@@ -515,18 +515,26 @@ impl ReactorState {
             (ENV_TEMP_C - self.secondary_steam_temp_c) * cond;
 
         // condenser vacuum (absolute pressure, kpa). worse vacuum -> less generator output.
+        // steam-jet ejector model: always on, self-limited by steam flow.
         let vac_base = 8.0;
         let vac_bad = 45.0;
         let flow_n = (self.steam_flow_kg_s / 2000.0).clamp(0.0, 2.5);
-        let target_vac = (vac_base + flow_n * 18.0).clamp(4.0, 101.0);
+
+        let target_vac_raw = (vac_base + flow_n * 18.0).clamp(4.0, 101.0);
+        let ejector_delta = (6.0 + flow_n * 4.0).clamp(0.0, 14.0);
+        let target_vac = (target_vac_raw - ejector_delta).clamp(4.0, 101.0);
+
         self.cond_vac_kpa_abs += (target_vac - self.cond_vac_kpa_abs) * 0.08;
         self.cond_vac_kpa_abs = self.cond_vac_kpa_abs.clamp(4.0, 101.0);
 
         let vac_n = (1.0 - ((self.cond_vac_kpa_abs - vac_base) / (vac_bad - vac_base)))
             .clamp(0.0, 1.0);
 
+        // cost: bleed a bit of steam to the ejector (vs turbine).
+        let bleed = (flow_n * 0.015).clamp(0.0, 0.035);
+
         // degrade mode: efficiency scales with vacuum; no hard trip.
-        self.power_el_mw = q_sg * 0.40 * vac_n;
+        self.power_el_mw = q_sg * 0.40 * vac_n * (1.0 - bleed);
     }
 
     fn step_charging_letdown(&mut self) {
