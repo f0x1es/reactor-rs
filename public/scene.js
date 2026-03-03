@@ -269,14 +269,14 @@
     // main body
     const vessel = new THREE.Mesh(new THREE.CylinderGeometry(vesselR, vesselR, vesselH, 32), vesselMat);
     vessel.castShadow = true;
-    scene.add(vessel);
+    addPrimary(vessel);
 
     // dome (top)
     const domeMat = new THREE.MeshStandardMaterial({ color: COLORS.dome, roughness: 0.25, metalness: 0.6, emissive: 0x080a0e });
     const dome = new THREE.Mesh(new THREE.SphereGeometry(vesselR, 32, 16, 0, Math.PI * 2, 0, Math.PI / 2), domeMat);
     dome.position.y = vesselH / 2;
     dome.castShadow = true;
-    scene.add(dome);
+    addPrimary(dome);
 
     // bottom hemisphere
     const bot = new THREE.Mesh(
@@ -285,7 +285,7 @@
     );
     // keep the bottom cap above the platform plane to avoid poking through the floor.
     bot.position.y = -vesselH / 2 + 0.32;
-    scene.add(bot);
+    addPrimary(bot);
 
     // flanges
     const flangeGeo = new THREE.TorusGeometry(vesselR + 0.04, 0.025, 12, 32);
@@ -293,7 +293,7 @@
       const f = new THREE.Mesh(flangeGeo, flangeMat);
       f.position.y = fy;
       f.rotation.x = Math.PI / 2;
-      scene.add(f);
+      addPrimary(f);
     }
 
     // nozzle ring
@@ -303,17 +303,17 @@
     );
     nozRing.position.y = DIMS.nozzleH;
     nozRing.rotation.x = Math.PI / 2;
-    scene.add(nozRing);
+    addPrimary(nozRing);
 
     // core glow
     coreGlow.position.set(0, 0, 0);
-    scene.add(coreGlow);
+    addPrimary(coreGlow);
     coreGlow2.position.set(0, -0.2, 0);
-    scene.add(coreGlow2);
+    addPrimary(coreGlow2);
 
     // label
     label.position.set(0, vesselH / 2 + 0.85, 0);
-    scene.add(label);
+    addPrimary(label);
   }
 
   // ── geometry: control rods (CRDMs) ─────────────────────────────
@@ -349,7 +349,7 @@
     );
     plate.position.y = vesselH / 2 + 0.10;
     group.add(plate);
-    scene.add(group);
+    addPrimary(group);
   }
 
   // ── geometry: containment dome ─────────────────────────────────
@@ -367,7 +367,7 @@
       contMat,
     );
     cont.position.y = -0.8;
-    scene.add(cont);
+    addPrimary(cont);
 
     const ring = new THREE.Mesh(
       new THREE.TorusGeometry(DIMS.containmentR, 0.02, 12, 64),
@@ -379,8 +379,14 @@
     );
     ring.position.y = -0.8;
     ring.rotation.x = Math.PI / 2;
-    scene.add(ring);
+    addPrimary(ring);
   }
+
+  const primaryObjs = [];
+  const secondaryObjs = [];
+
+  function addPrimary(obj) { scene.add(obj); primaryObjs.push(obj); return obj; }
+  function addSecondary(obj) { scene.add(obj); secondaryObjs.push(obj); return obj; }
 
   // ── geometry: primary loops (4x SG + MCP + piping) ─────────────
 
@@ -545,7 +551,7 @@
       dots.push({ mesh: d, t: k / 14 });
     }
 
-    scene.add(g);
+    addPrimary(g);
 
     // anchor points for secondary loop (decorative)
     const steamOut = new THREE.Vector3(sgX, sgY + sgR + 0.50, sgZ);
@@ -577,7 +583,7 @@
     header.position.y = headerY;
     header.rotation.x = Math.PI / 2;
     header.castShadow = true;
-    scene.add(header);
+    addSecondary(header);
 
     // turbine block
     const turbMat = new THREE.MeshStandardMaterial({ color: 0x9aa7b6, roughness: 0.35, metalness: 0.55 });
@@ -585,27 +591,27 @@
     turbine.position.set(3.55, 0.22, 0.0);
     turbine.rotation.z = Math.PI / 2;
     turbine.castShadow = true;
-    scene.add(turbine);
+    addSecondary(turbine);
     secondary.turbine = turbine;
 
     const turbLabel = makeLabel('turbine', 44);
     turbLabel.scale.set(1.2, 0.30, 1);
     turbLabel.material.opacity = 0.85;
     turbLabel.position.set(3.55, 0.68, 0.0);
-    scene.add(turbLabel);
+    addSecondary(turbLabel);
 
     // condenser block
     const condMat = new THREE.MeshStandardMaterial({ color: 0x6b7280, roughness: 0.55, metalness: 0.25 });
     const condenser = new THREE.Mesh(new THREE.BoxGeometry(1.15, 0.42, 0.55), condMat);
     condenser.position.set(3.55, -0.55, 0.0);
     condenser.castShadow = true;
-    scene.add(condenser);
+    addSecondary(condenser);
 
     const condLabel = makeLabel('cond', 44);
     condLabel.scale.set(1.0, 0.26, 1);
     condLabel.material.opacity = 0.75;
     condLabel.position.set(3.55, -0.08, 0.0);
-    scene.add(condLabel);
+    addSecondary(condLabel);
 
     // main steam line: header -> turbine
     const steamMainCurve = new THREE.CatmullRomCurve3([
@@ -615,7 +621,7 @@
       new THREE.Vector3(3.10, 0.22, 0.0),
     ]);
     secondary.curves.push({ curve: steamMainCurve, kind: 'steam' });
-    scene.add(makeTube(steamMainCurve, steamMat, 0.020));
+    addSecondary(makeTube(steamMainCurve, steamMat, 0.020));
 
     // exhaust steam: turbine -> condenser
     const exhaustCurve = new THREE.CatmullRomCurve3([
@@ -624,7 +630,7 @@
       new THREE.Vector3(3.95, -0.55, 0.0),
     ]);
     secondary.curves.push({ curve: exhaustCurve, kind: 'steam' });
-    scene.add(makeTube(exhaustCurve, steamMat, 0.018));
+    addSecondary(makeTube(exhaustCurve, steamMat, 0.018));
 
     // feedwater header (return) - low ring
     const feedHeaderR = 2.35;
@@ -636,7 +642,7 @@
     feedHeader.position.y = feedHeaderY;
     feedHeader.rotation.x = Math.PI / 2;
     feedHeader.castShadow = true;
-    scene.add(feedHeader);
+    addSecondary(feedHeader);
 
     // condenser -> feed header
     const condToFeed = new THREE.CatmullRomCurve3([
@@ -645,7 +651,7 @@
       new THREE.Vector3(feedHeaderR, feedHeaderY, 0.0),
     ]);
     secondary.curves.push({ curve: condToFeed, kind: 'feed' });
-    scene.add(makeTube(condToFeed, feedMat, 0.016));
+    addSecondary(makeTube(condToFeed, feedMat, 0.016));
 
     // connect each SG to steam header + feed header
     for (const L of loopObjs) {
@@ -660,7 +666,7 @@
         headerPoint,
       ]);
       secondary.curves.push({ curve: steamCurve, kind: 'steam' });
-      scene.add(makeTube(steamCurve, steamMat, 0.014));
+      addSecondary(makeTube(steamCurve, steamMat, 0.014));
 
       const fx = Math.cos(a) * feedHeaderR;
       const fz = Math.sin(a) * feedHeaderR;
@@ -672,7 +678,7 @@
         L.feedIn.clone(),
       ]);
       secondary.curves.push({ curve: feedCurve, kind: 'feed' });
-      scene.add(makeTube(feedCurve, feedMat, 0.012));
+      addSecondary(makeTube(feedCurve, feedMat, 0.012));
     }
 
     // flow dots for secondary
@@ -686,7 +692,7 @@
           metalness: 0.0,
         });
         const d = new THREE.Mesh(dotGeo2, dm);
-        scene.add(d);
+        addSecondary(d);
         secondary.dots.push({ mesh: d, curveIndex: i, t: (k / 6) });
       }
     }
@@ -702,7 +708,7 @@
       const mat = new THREE.MeshStandardMaterial({ color: COLORS.caravan, roughness: 0.3, metalness: 0.3 });
       const mesh = new THREE.Mesh(geo, mat);
       mesh.rotation.z = Math.PI / 2;
-      scene.add(mesh);
+      addPrimary(mesh);
       caravanMeshes.push({ mesh, phase: (i / 10) * Math.PI * 2, spd: 1.0 });
     }
   }
@@ -716,6 +722,51 @@
   for (let i = 0; i < 4; i++) loops.push(buildLoop(i));
   buildSecondary(loops);
   buildCaravans();
+
+  // ── view switching (primary vs secondary) ─────────────────────
+
+  let viewMode = (localStorage.getItem('reactor_3d_view') || 'primary');
+
+  function setBtnActive(id, on) {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.classList.toggle('is-active', !!on);
+  }
+
+  function applyView(mode) {
+    viewMode = (mode === 'secondary') ? 'secondary' : 'primary';
+    localStorage.setItem('reactor_3d_view', viewMode);
+
+    for (const o of primaryObjs) o.visible = (viewMode === 'primary');
+    for (const o of secondaryObjs) o.visible = (viewMode === 'secondary');
+
+    // platform stays visible in both views
+    // (it is not tracked in primary/secondary lists)
+
+    setBtnActive('view-primary', viewMode === 'primary');
+    setBtnActive('view-secondary', viewMode === 'secondary');
+
+    if (viewMode === 'secondary') {
+      orbit.target.set(3.4, -0.1, 0.0);
+      orbit.radius = 5.8;
+      orbit.theta = Math.PI;
+      orbit.phi = Math.PI * 0.38;
+    } else {
+      orbit.target.set(0.0, 0.2, 0.0);
+      orbit.radius = ORBIT.defaultRadius;
+      orbit.theta = ORBIT.defaultTheta;
+      orbit.phi = ORBIT.defaultPhi;
+    }
+    orbit.lastInteraction = Date.now();
+    updateCamera();
+  }
+
+  const btnP = document.getElementById('view-primary');
+  const btnS = document.getElementById('view-secondary');
+  if (btnP) btnP.addEventListener('click', () => applyView('primary'));
+  if (btnS) btnS.addEventListener('click', () => applyView('secondary'));
+
+  applyView(viewMode);
 
   // ── reactor state (updated by polling) ─────────────────────────
 

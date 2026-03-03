@@ -320,6 +320,10 @@ body.temp-high .topbar {
 .btn--danger { border-color: rgba(251, 113, 133, 0.55); }
 .btn--danger:hover { border-color: rgba(251, 113, 133, 0.95); }
 .btn--fixed { width: 60px; height: 26px; padding: 0; }
+.btn--sm { height: 26px; padding: 0 10px; font-size: var(--text-xs); }
+
+.view-toggle { display: inline-flex; gap: 6px; align-items: center; }
+.view-toggle .btn.is-active { border-color: rgba(45, 212, 191, 0.85); box-shadow: 0 0 0 1px rgba(45, 212, 191, 0.25) inset; }
 
 .text-hint { color: var(--text-muted); font-size: var(--text-xs); line-height: 1.35; padding-top: var(--space-xs); }
 .text-code { color: #c7d2fe; font-size: var(--text-xs); }
