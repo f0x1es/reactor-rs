@@ -757,6 +757,24 @@
     const pumpMat = new THREE.MeshStandardMaterial({ color: 0x9aa7b6, roughness: 0.38, metalness: 0.55 });
     const impMat = new THREE.MeshStandardMaterial({ color: 0xffe600, roughness: 0.30, metalness: 0.10 });
 
+    const isoValveMat = new THREE.MeshStandardMaterial({ color: 0xff2a2a, roughness: 0.35, metalness: 0.25 });
+    const checkValveMat = new THREE.MeshStandardMaterial({ color: 0xffe600, roughness: 0.35, metalness: 0.10 });
+    const valveGeo = new THREE.CylinderGeometry(0.035, 0.035, 0.06, 12);
+    const valveHandleGeo = new THREE.BoxGeometry(0.07, 0.02, 0.02);
+
+    function addValve(x, y, z, mat) {
+      const v = new THREE.Mesh(valveGeo, mat);
+      v.position.set(x, y, z);
+      v.rotation.z = Math.PI / 2;
+      v.castShadow = true;
+      addSecondary(v);
+
+      const h = new THREE.Mesh(valveHandleGeo, mat);
+      h.position.set(x, y + 0.06, z);
+      h.castShadow = true;
+      addSecondary(h);
+    }
+
     const pumpXs = 2.05;
     const pumpY = -0.58;
     const pumpZs = [-0.55, 0.0, 0.55];
@@ -788,6 +806,9 @@
       secondary.curves.push({ curve: sCurve, kind: 'feed' });
       addSecondary(makeTube(sCurve, feedMat, 0.010));
 
+      // suction isolation valve
+      addValve(pumpXs + 0.10, pumpY, z, isoValveMat);
+
       const sOut = new THREE.Vector3(pumpXs - 0.22, pumpY, z);
       const dCurve = new THREE.CatmullRomCurve3([
         sOut,
@@ -796,6 +817,10 @@
       ]);
       secondary.curves.push({ curve: dCurve, kind: 'feed' });
       addSecondary(makeTube(dCurve, feedMat, 0.010));
+
+      // discharge isolation + check valve
+      addValve(pumpXs - 0.30, pumpY, z, isoValveMat);
+      addValve(pumpXs - 0.38, pumpY, z, checkValveMat);
     }
 
     const toHeader = new THREE.CatmullRomCurve3([
