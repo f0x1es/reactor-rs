@@ -652,6 +652,10 @@ impl ReactorState {
         if max_temp >= TEMP_LIMIT_C {
             alarms.push("temp_high".into());
         }
+        if max_temp >= TEMP_LIMIT_C + 25 {
+            // ui-only: a more dramatic threshold for the fire theme
+            alarms.push("temp_xhigh".into());
+        }
 
         if zones.iter().any(|z| z.name == "voronezh" && z.power_pct > 69) {
             alarms.push("voronezh_moment".into());
