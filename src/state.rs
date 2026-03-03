@@ -6,7 +6,6 @@ use crate::models::*;
 #[derive(Debug)]
 pub enum SafetyRequest {
     SetTargetPower { zone: usize, target_power_pct: u8 },
-    SetUnsafeMode { enabled: bool },
     Scram,
     Reset,
     GetStatus(oneshot::Sender<Status>),
@@ -17,7 +16,6 @@ pub enum CoreRequest {
     Tick,
     SetMode(Mode),
     SetTargetPower { zone: usize, target_power_pct: u8 },
-    SetUnsafeMode { enabled: bool },
     SetAuto { enabled: bool },
     SetAutoSetpoint { power_pct: u8 },
     SetRod { rod_pct: u8 },

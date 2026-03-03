@@ -62,7 +62,6 @@ async fn main() -> anyhow::Result<()> {
         .route("/ui/auto", post(ui_auto))
         .route("/ui/auto_setpoint", post(ui_auto_setpoint))
         .route("/ui/rod", post(ui_rod))
-        .route("/ui/unsafe", post(ui_unsafe))
         .route("/ui/rob", post(ui_rob))
         .route("/ui/scram", post(ui_scram))
         .route("/ui/reset", post(ui_reset))

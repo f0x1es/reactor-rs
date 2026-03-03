@@ -62,7 +62,6 @@ pub struct Status {
 
     // control/state shown in ui
     pub auto_enabled: bool,
-    pub unsafe_mode: bool,
     pub auto_setpoint_power_pct: u8,
     pub temp_limit_c: i32,
     pub control_rod_pct: u8,

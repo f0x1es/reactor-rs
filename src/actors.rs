@@ -7,8 +7,7 @@ use crate::models::*;
 use crate::sim::ReactorState;
 use crate::state::*;
 
-const SAFE_MAX_POWER_PCT: u8 = 80;
-const UNSAFE_MAX_POWER_PCT: u8 = 100;
+const MAX_POWER_PCT: u8 = 80;
 
 pub async fn ticker(core_tx: mpsc::Sender<CoreRequest>) {
     let mut t = tokio::time::interval(Duration::from_millis(250));
@@ -23,13 +22,12 @@ pub async fn safety_actor(
     mut rx: mpsc::Receiver<SafetyRequest>,
     core_tx: mpsc::Sender<CoreRequest>,
 ) {
-    let mut max_power_pct: u8 = SAFE_MAX_POWER_PCT;
     while let Some(msg) = rx.recv().await {
         match msg {
             SafetyRequest::SetTargetPower {
                 zone,
                 target_power_pct,
-            } => match validate_target_power(zones, zone, target_power_pct, max_power_pct) {
+            } => match validate_target_power(zones, zone, target_power_pct, MAX_POWER_PCT) {
                 Ok(()) => {
                     let _ = core_tx.send(CoreRequest::SetMode(Mode::Running)).await;
                     let _ = core_tx
@@ -53,10 +51,6 @@ pub async fn safety_actor(
                         })
                         .await;
                 }
-            }
-            SafetyRequest::SetUnsafeMode { enabled } => {
-                max_power_pct = if enabled { UNSAFE_MAX_POWER_PCT } else { SAFE_MAX_POWER_PCT };
-                let _ = core_tx.send(CoreRequest::SetUnsafeMode { enabled }).await;
             }
             SafetyRequest::Reset => {
                 let _ = core_tx.send(CoreRequest::SetMode(Mode::Idle)).await;
@@ -114,7 +108,6 @@ pub async fn core_actor(
                 zone,
                 target_power_pct,
             } => state.set_target_power(zone, target_power_pct),
-            CoreRequest::SetUnsafeMode { enabled } => state.set_unsafe_mode(enabled),
             CoreRequest::SetAuto { enabled } => state.set_auto(enabled),
             CoreRequest::SetAutoSetpoint { power_pct } => state.set_auto_setpoint(power_pct),
             CoreRequest::SetRod { rod_pct } => state.set_rod(rod_pct),
