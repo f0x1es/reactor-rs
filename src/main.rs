@@ -57,6 +57,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/ui/caravans", get(ui_caravans))
         .route("/ui/loot", get(ui_loot))
         .route("/ui/audit", get(ui_audit))
+        .route("/ui/fw", get(ui_fw))
         // control actions
         .route("/ui/set_power", post(ui_set_power))
         .route("/ui/auto", post(ui_auto))
@@ -69,6 +70,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/ui/pipe_rupture", post(ui_pipe_rupture))
         .route("/ui/charging", post(ui_charging))
         .route("/ui/letdown", post(ui_letdown))
+        .route("/ui/fw_active", post(ui_fw_active))
+        .route("/ui/fw_auto", post(ui_fw_auto))
         // json api
         .route("/health", get(health))
         .route("/status", get(get_status))

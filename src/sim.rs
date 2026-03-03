@@ -82,6 +82,10 @@ pub struct ReactorState {
     secondary_steam_temp_c: f64,
     cond_vac_kpa_abs: f64,
 
+    // feedwater pumps (toy)
+    fw_mode: FeedPumpMode,
+    fw_active: FeedPumpId,
+
     // kip noise seeds (dual channels)
     kip_seed_a: u32,
     kip_seed_b: u32,
@@ -140,6 +144,9 @@ impl ReactorState {
             secondary_feed_temp_c: 220.0,
             secondary_steam_temp_c: 260.0,
             cond_vac_kpa_abs: 8.0,
+
+            fw_mode: FeedPumpMode::Auto,
+            fw_active: FeedPumpId::A,
 
             kip_seed_a: 0x12345678,
             kip_seed_b: 0x87654321,
@@ -210,6 +217,40 @@ impl ReactorState {
     pub fn set_letdown(&mut self, kg_s: u32) {
         self.letdown_kg_s = (kg_s as f64).min(5000.0);
         self.last_event = format!("letdown: {} kg/s", self.letdown_kg_s.round() as i32);
+    }
+
+    pub fn set_feedwater_auto(&mut self) {
+        self.fw_mode = FeedPumpMode::Auto;
+        self.last_event = "fw: auto".into();
+    }
+
+    pub fn set_feedwater_active(&mut self, pump: FeedPumpId) {
+        self.fw_mode = FeedPumpMode::Manual;
+        self.fw_active = pump;
+        self.last_event = format!("fw: manual {}", pump);
+    }
+
+    fn effective_feedwater_active(&self) -> FeedPumpId {
+        if self.fw_mode == FeedPumpMode::Auto {
+            if self.grid_power_on {
+                FeedPumpId::A // work
+            } else {
+                FeedPumpId::C // avr
+            }
+        } else {
+            self.fw_active
+        }
+    }
+
+    fn feedwater_state(&self, pump: FeedPumpId) -> FeedPumpState {
+        let active = self.effective_feedwater_active();
+        if pump == active {
+            FeedPumpState::Running
+        } else if pump == FeedPumpId::C {
+            FeedPumpState::Avr
+        } else {
+            FeedPumpState::Standby
+        }
     }
 
     // ── events ─────────────────────────────────────────────────────
@@ -358,6 +399,11 @@ impl ReactorState {
             secondary_feed_temp_c: self.secondary_feed_temp_c.round() as i32,
             secondary_steam_temp_c: self.secondary_steam_temp_c.round() as i32,
             cond_vac_kpa_abs: self.cond_vac_kpa_abs.round() as i32,
+            fw_mode: self.fw_mode,
+            fw_active: self.effective_feedwater_active(),
+            fw_a_state: self.feedwater_state(FeedPumpId::A),
+            fw_b_state: self.feedwater_state(FeedPumpId::B),
+            fw_c_state: self.feedwater_state(FeedPumpId::C),
             kip_a_primary_t_hot_c: kip_a.t_hot,
             kip_a_primary_t_cold_c: kip_a.t_cold,
             kip_a_primary_flow_kg_s: kip_a.flow,

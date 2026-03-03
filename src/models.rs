@@ -17,6 +17,58 @@ pub enum DieselState {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "lowercase")]
+pub enum FeedPumpId {
+    A,
+    B,
+    C,
+}
+
+impl std::fmt::Display for FeedPumpId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::A => f.write_str("a"),
+            Self::B => f.write_str("b"),
+            Self::C => f.write_str("c"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FeedPumpMode {
+    Auto,
+    Manual,
+}
+
+impl std::fmt::Display for FeedPumpMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Auto => f.write_str("auto"),
+            Self::Manual => f.write_str("manual"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum FeedPumpState {
+    Running,
+    Standby,
+    Avr,
+}
+
+impl std::fmt::Display for FeedPumpState {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Running => f.write_str("running"),
+            Self::Standby => f.write_str("standby"),
+            Self::Avr => f.write_str("avr"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CaravanState {
     EnRoute,
@@ -77,6 +129,13 @@ pub struct Status {
     pub secondary_feed_temp_c: i32,
     pub secondary_steam_temp_c: i32,
     pub cond_vac_kpa_abs: i32,
+
+    // feedwater pumps (toy)
+    pub fw_mode: FeedPumpMode,
+    pub fw_active: FeedPumpId,
+    pub fw_a_state: FeedPumpState,
+    pub fw_b_state: FeedPumpState,
+    pub fw_c_state: FeedPumpState,
 
     // kip (elemer) - dual channels a/b with independent noise
     pub kip_a_primary_t_hot_c: i32,

@@ -80,6 +80,26 @@
               </form>
             </fieldset>
 
+            <!-- feedwater -->
+            <fieldset class="control-group">
+              <legend class="control-group__legend">feedwater</legend>
+              <div class="text-hint" id="fw" hx-get="/ui/fw" hx-trigger="load, every 1s, refresh" hx-swap="innerHTML">fw: -</div>
+              <div class="controls-row">
+                <form hx-post="/ui/fw_active" hx-target="#msg" hx-swap="innerHTML">
+                  <button class="btn" type="submit" name="pump" value="a">a</button>
+                </form>
+                <form hx-post="/ui/fw_active" hx-target="#msg" hx-swap="innerHTML">
+                  <button class="btn" type="submit" name="pump" value="b">b</button>
+                </form>
+                <form hx-post="/ui/fw_active" hx-target="#msg" hx-swap="innerHTML">
+                  <button class="btn" type="submit" name="pump" value="c">c</button>
+                </form>
+                <form hx-post="/ui/fw_auto" hx-target="#msg" hx-swap="innerHTML">
+                  <button class="btn" type="submit">auto</button>
+                </form>
+              </div>
+            </fieldset>
+
             <!-- emergency -->
             <fieldset class="control-group control-group--danger">
               <legend class="control-group__legend control-group__legend--danger">emergency</legend>

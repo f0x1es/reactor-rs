@@ -21,6 +21,8 @@ pub enum CoreRequest {
     SetRod { rod_pct: u8 },
     SetCharging { kg_s: u32 },
     SetLetdown { kg_s: u32 },
+    SetFeedwaterAuto,
+    SetFeedwaterActive { pump: FeedPumpId },
     ContainmentHit,
     PipeRupture,
     RobCaravan { id: u64, reply: oneshot::Sender<Result<u32, String>> },

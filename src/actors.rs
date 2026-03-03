@@ -113,6 +113,8 @@ pub async fn core_actor(
             CoreRequest::SetRod { rod_pct } => state.set_rod(rod_pct),
             CoreRequest::SetCharging { kg_s } => state.set_charging(kg_s),
             CoreRequest::SetLetdown { kg_s } => state.set_letdown(kg_s),
+            CoreRequest::SetFeedwaterAuto => state.set_feedwater_auto(),
+            CoreRequest::SetFeedwaterActive { pump } => state.set_feedwater_active(pump),
             CoreRequest::ContainmentHit => state.containment_hit(),
             CoreRequest::PipeRupture => state.pipe_rupture(),
             CoreRequest::RobCaravan { id, reply } => {

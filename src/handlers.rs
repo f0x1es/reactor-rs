@@ -423,6 +423,55 @@ pub async fn ui_letdown(
     a.ok("set")
 }
 
+pub async fn ui_fw(State(st): State<AppState>) -> Result<Html<String>, StatusCode> {
+    let s = fetch_status(&st).await?;
+    Ok(Html(format!(
+        "fw: <b>{}</b> mode: <b>{}</b> | a: {} b: {} c: {}",
+        s.fw_active, s.fw_mode, s.fw_a_state, s.fw_b_state, s.fw_c_state
+    )))
+}
+
+#[derive(Debug, Deserialize)]
+pub struct FwActiveForm {
+    pump: String,
+}
+
+pub async fn ui_fw_active(
+    State(st): State<AppState>,
+    headers: HeaderMap,
+    Form(req): Form<FwActiveForm>,
+) -> Result<(HeaderMap, Html<&'static str>), StatusCode> {
+    let pump = match req.pump.as_str() {
+        "a" | "A" => FeedPumpId::A,
+        "b" | "B" => FeedPumpId::B,
+        "c" | "C" => FeedPumpId::C,
+        _ => return Err(StatusCode::BAD_REQUEST),
+    };
+
+    let a = Audited::new(&st, &headers, "fw_active", &pump.to_string()).await;
+
+    st.core_tx
+        .send(CoreRequest::SetFeedwaterActive { pump })
+        .await
+        .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+
+    a.ok("set")
+}
+
+pub async fn ui_fw_auto(
+    State(st): State<AppState>,
+    headers: HeaderMap,
+) -> Result<(HeaderMap, Html<&'static str>), StatusCode> {
+    let a = Audited::new(&st, &headers, "fw_mode", "auto").await;
+
+    st.core_tx
+        .send(CoreRequest::SetFeedwaterAuto)
+        .await
+        .map_err(|_| StatusCode::SERVICE_UNAVAILABLE)?;
+
+    a.ok("set")
+}
+
 #[derive(Debug, Deserialize)]
 pub struct RobForm {
     id: u64,

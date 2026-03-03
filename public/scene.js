@@ -619,6 +619,7 @@
     dots: [],
     turbine: null,
     fwPumps: [],
+    fwValves: [],
     pBoard: null,
   };
 
@@ -757,8 +758,8 @@
     const pumpMat = new THREE.MeshStandardMaterial({ color: 0x9aa7b6, roughness: 0.38, metalness: 0.55 });
     const impMat = new THREE.MeshStandardMaterial({ color: 0xffe600, roughness: 0.30, metalness: 0.10 });
 
-    const isoValveMat = new THREE.MeshStandardMaterial({ color: 0xff2a2a, roughness: 0.35, metalness: 0.25 });
-    const checkValveMat = new THREE.MeshStandardMaterial({ color: 0xffe600, roughness: 0.35, metalness: 0.10 });
+    const isoValveBase = new THREE.MeshStandardMaterial({ color: 0xff2a2a, roughness: 0.35, metalness: 0.25 });
+    const checkValveBase = new THREE.MeshStandardMaterial({ color: 0xffe600, roughness: 0.35, metalness: 0.10 });
     const valveGeo = new THREE.CylinderGeometry(0.035, 0.035, 0.06, 12);
     const valveHandleGeo = new THREE.BoxGeometry(0.07, 0.02, 0.02);
 
@@ -766,7 +767,10 @@
     const gaugeDialMat = new THREE.MeshStandardMaterial({ color: 0xf8fafc, roughness: 0.75, metalness: 0.05 });
     const tcMat = new THREE.MeshStandardMaterial({ color: 0x94a3b8, roughness: 0.35, metalness: 0.45 });
 
-    function addValve(x, y, z, mat) {
+    function addIsoValve(x, y, z) {
+      const mat = isoValveBase.clone();
+      mat.emissive = new THREE.Color(0x000000);
+
       const v = new THREE.Mesh(valveGeo, mat);
       v.position.set(x, y, z);
       v.rotation.z = Math.PI / 2;
@@ -777,6 +781,21 @@
       h.position.set(x, y + 0.06, z);
       h.castShadow = true;
       addSecondary(h);
+
+      return { body: v, handle: h, mat };
+    }
+
+    function addCheckValve(x, y, z) {
+      const mat = checkValveBase.clone();
+      mat.emissive = new THREE.Color(0x000000);
+
+      const v = new THREE.Mesh(valveGeo, mat);
+      v.position.set(x, y, z);
+      v.rotation.z = Math.PI / 2;
+      v.castShadow = true;
+      addSecondary(v);
+
+      return { body: v, mat };
     }
 
     function addGauge(x, y, z) {
@@ -847,7 +866,7 @@
       addSecondary(makeTube(sCurve, feedMat, 0.010));
 
       // suction isolation valve
-      addValve(pumpXs + 0.10, pumpY, z, isoValveMat);
+      const vS = addIsoValve(pumpXs + 0.10, pumpY, z);
 
       const sOut = new THREE.Vector3(pumpXs - 0.22, pumpY, z);
       const dCurve = new THREE.CatmullRomCurve3([
@@ -859,8 +878,10 @@
       addSecondary(makeTube(dCurve, feedMat, 0.010));
 
       // discharge isolation + check valve
-      addValve(pumpXs - 0.30, pumpY, z, isoValveMat);
-      addValve(pumpXs - 0.38, pumpY, z, checkValveMat);
+      const vD = addIsoValve(pumpXs - 0.30, pumpY, z);
+      const vCk = addCheckValve(pumpXs - 0.38, pumpY, z);
+
+      secondary.fwValves.push({ suction: vS, discharge: vD, check: vCk });
 
       // discharge instruments: pressure gauge + thermocouple
       addGauge(pumpXs - 0.50, pumpY, z);
@@ -996,6 +1017,7 @@
     flow: 0,
     steamFlow: 0,
     pElMw: 0,
+    fwActive: 'a',
     sn: [true, true, true],
     alarms: '',
     impactShakeUntil: 0,
@@ -1014,6 +1036,7 @@
       reactorState.flow = st.primary_flow_kg_s || 0;
       reactorState.steamFlow = st.steam_flow_kg_s || 0;
       reactorState.pElMw = (typeof st.power_el_mw === 'number') ? st.power_el_mw : 0;
+      reactorState.fwActive = st.fw_active || 'a';
       reactorState.sn = [!!st.sn_a_on, !!st.sn_b_on, !!st.sn_c_on];
 
       if (secondary.pBoard) {
@@ -1159,9 +1182,31 @@
     // turbine spin hint (decorative)
     if (secondary.turbine) secondary.turbine.rotation.x += dt * (0.4 + steamN * 5.0);
 
-    // feedwater pumps spin (decorative)
-    for (const p of secondary.fwPumps) {
-      p.rotation.x += dt * (0.6 + steamN * 6.0);
+    function fwIdx(id) {
+      return (id === 'b') ? 1 : (id === 'c') ? 2 : 0;
+    }
+
+    function setValveOpen(v, open) {
+      if (!v || !v.mat) return;
+      const on = !!open;
+      v.mat.emissive.setHex(on ? 0x0a3a16 : 0x2a0000);
+      if (v.handle) v.handle.rotation.z = on ? 0.0 : (Math.PI / 2);
+    }
+
+    // feedwater pumps + valves
+    const active = fwIdx(st.fwActive);
+    for (let i = 0; i < secondary.fwPumps.length; i++) {
+      const imp = secondary.fwPumps[i];
+      const on = (i === active);
+      imp.rotation.x += dt * (on ? (0.6 + steamN * 6.0) : 0.02);
+
+      const vs = secondary.fwValves[i];
+      if (vs) {
+        setValveOpen(vs.suction, on);
+        setValveOpen(vs.discharge, on);
+        // check valve opens only in flow direction.
+        setValveOpen(vs.check, on);
+      }
     }
 
     // caravans orbit
