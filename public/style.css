@@ -41,4 +41,38 @@ select{font:inherit;color:var(--text)}select:focus-visible{outline:3px solid var
 .command-feedback{grid-column:1/-1;font:11px/1.5 var(--mono);color:var(--muted);min-height:17px;margin-top:4px;overflow-wrap:anywhere}.form-inline:has(.range-track) .command-feedback:not(:empty){margin-top:12px}.command-feedback:empty{display:none}.command-feedback[data-state=draft],.command-feedback[data-state=pending]{color:var(--warn)}.command-feedback[data-state=error]{color:var(--danger)}.command-feedback[data-state=success]{color:var(--accent)}
 .segmented{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:3px;align-self:flex-start;width:200px;max-width:100%;padding:3px;background:#0a1217;border:1px solid #3c515b;border-radius:6px;margin:2px 0 4px}.segmented--pumps{grid-template-columns:repeat(4,minmax(0,1fr));width:320px}.segmented form{display:contents}.segmented .btn{min-width:0;gap:8px;padding:6px 8px;border:0;border-radius:3px;background:transparent;color:var(--muted)}.segmented .btn:hover{background:#1b3036;color:var(--text)}.segmented .btn[aria-pressed=true]{background:#284b43;color:#c4fbed;box-shadow:inset 0 0 0 1px #64978a}.segmented .btn{justify-content:center;text-align:center}.segmented .btn::before{content:none}.segmented .command-feedback{grid-column:1/-1;margin:0;padding:6px 5px 3px;white-space:normal;overflow-wrap:anywhere;border-top:1px solid var(--line)}
 @media(max-width:600px){#controls .panel__header .text-hint{display:block;font-size:11px}#controls .panel__body{padding:10px}#controls .form-inline:has(.range-track){grid-template-columns:minmax(0,1fr) 62px 78px;gap:0 8px}#controls .form-inline:has(.range-track) .command-label{grid-column:1/-1;grid-row:auto;margin:3px 0 4px}.range-track input{height:44px}.range-track input::-webkit-slider-thumb{width:22px;height:26px;margin-top:-10px}#controls .zone-picker{gap:12px;margin-bottom:10px}#controls .zone-picker>.label{flex-basis:48px}#controls .form-power .command-label{grid-row:2}#controls .form-power .range-track{grid-column:1;grid-row:3}#controls .form-power .exact-value{grid-column:2;grid-row:3}#controls .form-power>.btn{grid-column:3;grid-row:3}.command-feedback{font-size:11px}.segmented .btn{min-width:0}.zone-select{font-size:16px}}
+/* Desktop cockpit: fill the viewport; overflow belongs to panel bodies. */
+@media(min-width:1101px){
+  html,body{height:100%;overflow:hidden}
+  .app-container{width:100%;max-width:none;height:100dvh;min-height:0;padding:8px 12px;align-items:stretch;grid-template-columns:minmax(420px,.95fr) minmax(320px,1.35fr) minmax(260px,.7fr);grid-template-rows:auto auto auto minmax(0,1fr) minmax(0,.55fr);gap:8px}
+  .layout-col{display:contents}
+  #controls{grid-column:1;grid-row:4}
+  #audit-panel{grid-column:1;grid-row:5}
+  #plant-panel{grid-column:2;grid-row:4}
+  .panel:has(#chart){grid-column:2;grid-row:5}
+  #zone-panel{grid-column:3;grid-row:4}
+  #caravan-panel{grid-column:3;grid-row:5}
+  .panel{display:flex;flex-direction:column;min-width:0;min-height:0;max-height:none}
+  .panel__header{flex:none;flex-wrap:wrap}
+  .panel__body{flex:1;min-height:0;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin;scrollbar-color:var(--line) transparent}
+  #controls .panel__header .text-hint{font-size:10px}
+  #controls .form-inline:has(.range-track){grid-template-columns:98px minmax(40px,1fr) 56px 64px;column-gap:8px}
+  #controls .zone-picker>.label{flex-basis:98px}
+  #plant-panel .panel__body{display:flex;flex-direction:column;overflow:hidden}
+  .view-3d{flex:1;min-height:0;height:auto}
+  .scene-caption{flex:none;flex-wrap:wrap;gap:4px}
+  .panel:has(#chart) .panel__body{display:flex;flex-direction:column;overflow:hidden}
+  .zones-temp__chart{flex:1;min-height:0;height:auto}
+  .chart-legend{flex:none;flex-wrap:wrap}
+  #audit-panel .panel__body,#caravan-panel .panel__body{display:flex;overflow:hidden}
+  .audit-log,.table--caravans{flex:1;min-width:0;min-height:0;max-height:none;overflow:auto;overscroll-behavior:contain;scrollbar-width:thin}
+  .table--caravans .table{min-width:0;font-size:11px}
+  .table--caravans th,.table--caravans td{padding:5px 4px}
+  .table--caravans td:last-child{width:48px}
+  .table--caravans .btn--fixed{min-width:40px;padding:5px;font-size:11px}
+  .table--zones{font-size:11px}
+  .table--zones th,.table--zones td{padding:6px}
+  .table--zones td:nth-child(2){white-space:normal}
+  .table--zones thead{position:sticky;top:0;background:var(--surface);z-index:1}
+}
 @media(prefers-reduced-motion:reduce){html{scroll-behavior:auto}*,*::before,*::after{animation:none!important;transition:none!important}}
