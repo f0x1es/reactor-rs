@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>venom player</title>
+  <link rel="stylesheet" href="/assets/venom.css" />
+</head>
+<body class="vp-body">
+  <main class="vp" id="vp">
+    <header class="vp__header">
+      <div class="vp__title">venom player</div>
+    </header>
+
+    <section class="vp__panel vp__panel--menu">
+      <button class="vp__menu-btn" id="menuBtn" type="button">
+        <span class="vp__menu-label">меню</span>
+        <span class="vp__menu-sandwich" aria-hidden="true"></span>
+      </button>
+
+      <div class="vp__rutracker" aria-label="rutracker meme">
+        <div class="vp__rutracker-text">rutracker.org</div>
+        <div class="vp__rutracker-sub">мем. не ссылка.</div>
+      </div>
+    </section>
+
+    <section class="vp__panel vp__panel--settings" id="settings">
+      <div class="vp__panel-title">настроек</div>
+      <div class="vp__settings-grid">
+        <button class="vp__big-btn" id="trojanBtn" type="button">
+          <span class="vp__big-btn-icon vp__icon vp__icon--fox">fx</span>
+          <span class="vp__big-btn-text">
+            <span class="vp__big-btn-main">включить троян</span>
+            <span class="vp__big-btn-sub" id="trojanState">off (муляж)</span>
+          </span>
+        </button>
+
+        <button class="vp__big-btn" id="serverBtn" type="button">
+          <span class="vp__big-btn-icon vp__icon vp__icon--bt">bt</span>
+          <span class="vp__big-btn-text">
+            <span class="vp__big-btn-main">сервер</span>
+            <span class="vp__big-btn-sub" id="serverState">выкл</span>
+          </span>
+          <span class="vp__badge">новинка</span>
+        </button>
+      </div>
+    </section>
+
+    <section class="vp__panel vp__panel--balance">
+      <div class="vp__balance">
+        <div class="vp__balance-line">ваш баланс: <span id="bal">7.08</span> rub.</div>
+        <button class="vp__topup" id="topupBtn" type="button">пополнить</button>
+      </div>
+      <div class="vp__fineprint">пародия. ничего не качает. ничего не включает.</div>
+    </section>
+
+    <footer class="vp__footer">крутые штуки inc</footer>
+  </main>
+
+  <div class="vp-toast" id="toast" hidden></div>
+
+  <script src="/assets/venom.js"></script>
+</body>
+</html>

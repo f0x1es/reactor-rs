@@ -10,120 +10,150 @@
   <link rel="stylesheet" href="/assets/style.css" />
 </head>
 <body>
-  <div class="app-container">
+  <a class="skip-link" href="#controls">Skip to controls</a>
+  <main class="app-container" id="overview">
     <header class="topbar">
       <div class="topbar__brand">
-        <h1 class="topbar__title">reactor-rs</h1>
+        <div><h1 class="topbar__title">reactor<span>-rs</span></h1></div>
         <span class="pill">mode: <b id="mode" hx-get="/ui/mode" hx-trigger="load, every 1s, refresh" hx-swap="innerHTML">-</b></span>
       </div>
       <div class="topbar__actions">
-        <div class="pill pill--clickable" id="musicBtn" role="button" tabindex="0">music: <b id="musicState">off</b></div>
-        <div class="pill">poll: <b>1s</b></div>
+        <button class="btn btn--danger" type="button" hx-post="/ui/scram" hx-target="#msg" hx-swap="innerHTML" title="Immediate emergency shutdown">AZ-5 · SCRAM</button>
+        <button class="pill pill--clickable" id="musicBtn" type="button" aria-pressed="false">music: <b id="musicState">off</b></button>
+
       </div>
     </header>
+    <div class="status-rail">
+      <nav aria-label="Sections"><a href="#overview">Overview</a><a href="#controls">Controls</a><a href="#audit-panel">Audit</a></nav>
+      <div id="connection" class="connection" role="status">Connecting · waiting for telemetry</div>
+    </div>
+    <section class="telemetry" aria-label="Live plant telemetry">
+      <div><span>Thermal output</span><strong id="metric-thermal">—</strong><small>MW thermal</small></div>
+      <div><span>Electrical output</span><strong id="metric-electric">—</strong><small>MW electric</small></div>
+      <div><span>Primary hot leg</span><strong id="metric-hot">—</strong><small>°C</small></div>
+      <div><span>Primary pressure</span><strong id="metric-pressure">—</strong><small>bar</small></div>
+      <div><span>Control rods</span><strong id="metric-rods">—</strong><small>% insertion</small></div>
+    </section>
 
     <div class="layout-col layout-col--left">
-      <section class="panel">
+      <section class="panel" id="controls" tabindex="-1">
         <header class="panel__header">
-          <div class="panel__title">control</div>
-          <div id="msg" class="text-msg"></div>
+          <h2 class="panel__title">Reactor controls</h2>
+          <div class="text-hint" id="draft-help">Drafts: Apply or Enter to send</div>
         </header>
         <div class="panel__body">
+
           <div class="control-grid">
+            <!-- Bounded commands use draft sliders + exact native inputs. -->
             <!-- power -->
             <fieldset class="control-group">
-              <legend class="control-group__legend">power</legend>
-              <form class="form-inline" hx-post="/ui/set_power" hx-target="#msg" hx-swap="innerHTML">
-                <label class="label">zone</label>
-                <input class="input input--sm" name="zone" type="number" min="0" max="99" value="0" />
-                <label class="label">target %</label>
-                <input class="input input--sm" name="target_power_pct" type="number" min="0" max="100" value="50" />
-                <button class="btn" type="submit">set</button>
+              <legend class="control-group__legend">Zone power</legend>
+              <div id="zone-current" class="current-state">Waiting for zone state…</div>
+              <form class="form-inline form-power" hx-post="/ui/set_power" hx-target="#msg" hx-swap="innerHTML">
+                <div class="zone-picker">
+                  <label for="control-1" class="label">Zone</label>
+                  <select id="control-1" required class="input zone-select" name="zone" aria-describedby="zone-current"><option value="">Waiting for zones…</option></select>
+                </div>
+                <label for="control-2" class="label command-label">Zone target <small>%</small></label>
+                <div class="range-track"><input id="range-2" aria-label="Zone target draft percent" type="range" min="0" max="100" step="1" value="50" data-exact="control-2" /><span class="range-ends"><span>0</span><span>100%</span></span></div>
+                <input id="control-2" required class="input input--sm exact-value" name="target_power_pct" type="number" min="0" max="100" step="1" value="50" />
+                <button class="btn" type="submit">Apply</button>
               </form>
             </fieldset>
 
             <!-- automation -->
             <fieldset class="control-group">
-              <legend class="control-group__legend">automation</legend>
-              <div class="controls-row">
+              <legend class="control-group__legend">Regulation</legend>
+              <div id="auto-current" class="current-state">Waiting for regulation state…</div>
+              <div class="controls-row segmented" role="group" aria-label="Regulation mode, confirmed by telemetry">
                 <form hx-post="/ui/auto" hx-target="#msg" hx-swap="innerHTML">
-                  <button class="btn" type="submit" name="enabled" value="1">auto on</button>
+                  <button class="btn" type="submit" name="enabled" value="1" id="auto-on">Auto</button>
                 </form>
                 <form hx-post="/ui/auto" hx-target="#msg" hx-swap="innerHTML">
-                  <button class="btn" type="submit">auto off</button>
+                  <button class="btn" type="submit" id="auto-off">Manual</button>
                 </form>
               </div>
               <form class="form-inline" hx-post="/ui/auto_setpoint" hx-target="#msg" hx-swap="innerHTML">
-                <label class="label">setpoint %</label>
-                <input class="input input--sm" name="power_pct" type="number" min="0" max="100" value="50" />
-                <button class="btn" type="submit">set</button>
+                <label for="control-3" class="label command-label">Auto setpoint <small>%</small></label>
+                <div class="range-track"><input id="range-3" aria-label="Auto setpoint draft percent" type="range" min="0" max="100" step="1" value="50" data-exact="control-3" /><span class="range-ends"><span>0</span><span>100%</span></span></div>
+                <input id="control-3" required class="input input--sm exact-value" name="power_pct" type="number" min="0" max="100" step="1" value="50" />
+                <button class="btn" type="submit">Apply</button>
               </form>
               <form class="form-inline" hx-post="/ui/rod" hx-target="#msg" hx-swap="innerHTML">
-                <label class="label">rod %</label>
-                <input class="input input--sm" name="rod_pct" type="number" min="0" max="100" value="0" />
-                <button class="btn" type="submit">set</button>
+                <label for="control-4" class="label command-label">Rod insertion <small>%</small></label>
+                <div class="range-track"><input id="range-4" aria-label="Rod insertion draft percent" type="range" min="0" max="100" step="1" value="0" data-exact="control-4" /><span class="range-ends"><span>0</span><span>100%</span></span></div>
+                <input id="control-4" required class="input input--sm exact-value" name="rod_pct" type="number" min="0" max="100" step="1" value="0" />
+                <button class="btn" type="submit">Apply</button>
               </form>
             </fieldset>
 
-            <!-- auxiliary -->
+            <!-- auxiliary + feedwater: secondary tasks, fully available -->
+            <details class="control-details" id="cooling-controls">
+              <summary><span class="summary-label">Cooling & feedwater</span><span class="summary-state" id="cooling-current">Waiting…</span></summary>
+              <div class="control-grid">
             <fieldset class="control-group">
-              <legend class="control-group__legend">auxiliary</legend>
+              <legend class="control-group__legend">Auxiliary flow</legend>
               <form class="form-inline" hx-post="/ui/charging" hx-target="#msg" hx-swap="innerHTML">
-                <label class="label">charging kg/s</label>
-                <input class="input input--sm" name="kg_s" type="number" min="0" max="5000" value="0" />
-                <button class="btn" type="submit">set</button>
+                <label for="control-5" class="label">Charging <span class="label-unit">kg/s</span></label>
+                <input id="control-5" required class="input input--sm" name="kg_s" type="number" min="0" max="5000" value="0" />
+                <button class="btn" type="submit">Apply</button>
               </form>
               <form class="form-inline" hx-post="/ui/letdown" hx-target="#msg" hx-swap="innerHTML">
-                <label class="label">letdown kg/s</label>
-                <input class="input input--sm" name="kg_s" type="number" min="0" max="5000" value="0" />
-                <button class="btn" type="submit">set</button>
+                <label for="control-6" class="label">Letdown <span class="label-unit">kg/s</span></label>
+                <input id="control-6" required class="input input--sm" name="kg_s" type="number" min="0" max="5000" value="0" />
+                <button class="btn" type="submit">Apply</button>
               </form>
             </fieldset>
 
             <!-- feedwater -->
             <fieldset class="control-group">
-              <legend class="control-group__legend">feedwater</legend>
+              <legend class="control-group__legend">Feedwater pumps</legend>
               <div class="text-hint" id="fw" hx-get="/ui/fw" hx-trigger="load, every 1s, refresh" hx-swap="innerHTML">fw: -</div>
-              <div class="controls-row">
+              <div class="controls-row segmented segmented--pumps" role="group" aria-label="Feedwater selection, confirmed by telemetry">
                 <form hx-post="/ui/fw_active" hx-target="#msg" hx-swap="innerHTML">
-                  <button class="btn" type="submit" name="pump" value="a">a</button>
+                  <button class="btn" type="submit" name="pump" value="a" aria-label="Pump A">A</button>
                 </form>
                 <form hx-post="/ui/fw_active" hx-target="#msg" hx-swap="innerHTML">
-                  <button class="btn" type="submit" name="pump" value="b">b</button>
+                  <button class="btn" type="submit" name="pump" value="b" aria-label="Pump B">B</button>
                 </form>
                 <form hx-post="/ui/fw_active" hx-target="#msg" hx-swap="innerHTML">
-                  <button class="btn" type="submit" name="pump" value="c">c</button>
+                  <button class="btn" type="submit" name="pump" value="c" aria-label="Pump C">C</button>
                 </form>
                 <form hx-post="/ui/fw_auto" hx-target="#msg" hx-swap="innerHTML">
-                  <button class="btn" type="submit">auto</button>
+                  <button class="btn" type="submit">Auto</button>
                 </form>
               </div>
             </fieldset>
 
+              </div>
+            </details>
             <!-- emergency -->
+            <details class="control-details fault-details">
+              <summary><span class="summary-label">Reset & fault injection</span></summary>
             <fieldset class="control-group control-group--danger">
-              <legend class="control-group__legend control-group__legend--danger">emergency</legend>
+              <legend class="control-group__legend control-group__legend--danger">Simulation faults</legend>
               <div class="controls-row">
-                <button class="btn btn--danger" type="button" hx-post="/ui/scram" hx-target="#msg" hx-swap="innerHTML">az-5</button>
-                <button class="btn" type="button" hx-post="/ui/reset" hx-target="#msg" hx-swap="innerHTML">reset</button>
-                <button class="btn btn--danger" type="button" hx-post="/ui/containment_hit" hx-target="#msg" hx-swap="innerHTML">containment hit</button>
-                <button class="btn btn--danger" type="button" hx-post="/ui/pipe_rupture" hx-target="#msg" hx-swap="innerHTML">pipe rupture</button>
+                <button class="btn" type="button" hx-post="/ui/reset" hx-target="#msg" hx-swap="innerHTML">Reset</button>
+                <button class="btn btn--danger" type="button" hx-post="/ui/containment_hit" hx-target="#msg" hx-swap="innerHTML">Containment hit</button>
+                <button class="btn btn--danger" type="button" hx-post="/ui/pipe_rupture" hx-target="#msg" hx-swap="innerHTML">Pipe rupture</button>
               </div>
             </fieldset>
+            </details>
           </div>
 
-          <div class="text-hint">zones 1-4 = extra load. auto keeps power/temp in check.</div>
+          <div id="msg" class="text-msg" role="status" aria-live="polite"></div>
         </div>
       </section>
 
-      <section class="panel">
-        <div class="panel__body panel__body--nopad panel__body--zones">
-          <table class="table table--zones">
+      <section class="panel" id="zone-panel">
+        <header class="panel__header"><h2 class="panel__title">All zones</h2><span class="text-hint">Target / actual</span></header>
+        <div class="panel__body panel__body--nopad panel__body--zones" tabindex="0" role="region" aria-label="Zone telemetry table">
+          <table class="table table--zones" aria-label="Zone power and temperature">
             <thead>
               <tr>
-                <th style="width:64px;">zone</th>
-                <th style="width:120px;">name</th>
-                <th style="width:90px;">target</th>
+                <th>zone</th>
+                <th>name</th>
+                <th>target</th>
                 <th>power</th>
                 <th>temp</th>
               </tr>
@@ -135,57 +165,60 @@
 
       <section class="panel">
         <header class="panel__header">
-          <div class="panel__title">temperature trend</div>
-          <div class="pill">poll: <b>1s</b></div>
+          <h2 class="panel__title">Power & temperature</h2>
+          <div id="history-state" class="text-hint">Loading history…</div>
         </header>
         <div class="panel__body">
+          <div class="chart-legend"><span><i class="chart-key" aria-hidden="true"></i>Average power %</span><span><i class="chart-key" aria-hidden="true"></i>Maximum temperature °C</span></div>
           <div class="zones-temp__chart">
-            <canvas id="chart"></canvas>
+            <canvas id="chart" role="img" aria-label="History: average power percent on left axis, maximum temperature Celsius on right axis"></canvas>
           </div>
         </div>
       </section>
 
-      <section class="panel panel--grow">
+      <section class="panel panel--grow" id="audit-panel" tabindex="-1">
         <header class="panel__header">
-          <div class="panel__title">audit</div>
-          <div class="pill">last 24</div>
+          <h2 class="panel__title">Operator audit</h2>
+          <div class="text-hint">Latest 24 · UTC</div>
         </header>
         <div class="panel__body panel__body--nopad">
-          <div id="audit" class="audit-log" hx-get="/ui/audit" hx-trigger="load, every 1s" hx-select=".audit-log__line" hx-swap="innerHTML"></div>
+          <div id="audit" class="audit-log" tabindex="0" role="region" aria-label="Operator audit records, UTC" hx-get="/ui/audit" hx-trigger="load, every 1s" hx-select=".audit-log__line" hx-swap="innerHTML"></div>
         </div>
       </section>
     </div>
 
     <div class="layout-col">
-      <section class="panel">
+      <section class="panel" id="plant-panel">
         <header class="panel__header">
-          <div class="panel__title">3d</div>
+          <h2 class="panel__title">Plant view</h2>
+          <div class="alarm-list" id="alarms" aria-label="Plant alarms" hx-get="/ui/alarms" hx-trigger="load, every 1s, refresh" hx-swap="innerHTML"></div>
           <div class="view-toggle" role="group" aria-label="3d view">
             <button id="view-primary" class="btn btn--sm" type="button">primary</button>
             <button id="view-secondary" class="btn btn--sm" type="button">secondary</button>
           </div>
         </header>
         <div class="panel__body">
-          <div id="three" class="view-3d view-3d--main"></div>
+          <div id="three" class="view-3d view-3d--main" role="img" aria-label="Animated reactor plant visualization"></div>
+          <div class="scene-caption"><span id="scene-state">Initializing 3D…</span><span>VVER-1000 / schematic</span></div>
         </div>
       </section>
 
-      <section class="panel panel--grow">
+      <section class="panel panel--grow" id="caravan-panel">
         <header class="panel__header">
-          <div class="panel__title">alarms & caravans</div>
-          <div class="alarm-list" id="alarms" hx-get="/ui/alarms" hx-trigger="load, every 1s, refresh" hx-swap="innerHTML"></div>
+          <h2 class="panel__title">Caravans</h2>
           <div class="pill" id="loot" hx-get="/ui/loot" hx-trigger="load, every 1s, refresh" hx-swap="innerHTML">loot: -</div>
         </header>
         <div class="panel__body panel__body--nopad">
-          <div class="table-wrapper table--caravans">
+          <div class="table-wrapper table--caravans" tabindex="0" role="region" aria-label="Caravans and robbery actions">
             <div id="caravans" hx-get="/ui/caravans" hx-trigger="load, every 1s, refresh" hx-swap="innerHTML"></div>
           </div>
         </div>
       </section>
     </div>
-  </div>
+  </main>
 
   <script src="/assets/app.js"></script>
   <script src="/assets/scene.js"></script>
+  <noscript><p class="noscript">JavaScript is required for live telemetry and simulation controls.</p></noscript>
 </body>
 </html>
